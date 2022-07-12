@@ -9,7 +9,7 @@ type term =
   | Com    of term * term
   | App    of term * term
   | Hom    of term * term * term
-  | Eps    of ident * term * prop
+  | Eps    of clos
 
 and prop =
   | True
@@ -17,9 +17,15 @@ and prop =
   | And    of prop * prop
   | Or     of prop * prop
   | Impl   of prop * prop
-  | Forall of ident * term * prop
-  | Exists of ident * term * prop
   | Eq     of term * term
+  | Forall of clos
+  | Exists of clos
+
+and clos = ident * term * prop
+
+let eps    (x, t, i) = Eps    (x, t, i)
+let forall (x, t, i) = Forall (x, t, i)
+let exists (x, t, i) = Exists (x, t, i)
 
 let freshVar x = Var (freshName x)
 
@@ -81,48 +87,52 @@ and app f = function
   | x          -> App (f, x)
 
 let rec subst x e = function
-  | U n              -> U n
-  | Var y            -> if x = y then e else Var y
-  | Dom g            -> Dom (subst x e g)
-  | Cod g            -> Cod (subst x e g)
-  | Id a             -> Id (subst x e a)
-  | App (f, a)       -> App (subst x e f, subst x e a)
-  | Com (f, g)       -> Com (subst x e f, subst x e g)
-  | Hom (t, a, b)    -> Hom (subst x e t, subst x e a, subst x e b)
-  | Eps (y, t, i)    -> if x = y then Eps (y, t, i) else Eps (y, subst x e t, substProp x e i)
+  | U n           -> U n
+  | Var y         -> if x = y then e else Var y
+  | Dom g         -> Dom (subst x e g)
+  | Cod g         -> Cod (subst x e g)
+  | Id a          -> Id (subst x e a)
+  | App (f, a)    -> App (subst x e f, subst x e a)
+  | Com (f, g)    -> Com (subst x e f, subst x e g)
+  | Hom (t, a, b) -> Hom (subst x e t, subst x e a, subst x e b)
+  | Eps c         -> substClos eps x e c
 
 and substProp x e = function
-  | True             -> True
-  | False            -> False
-  | And (a, b)       -> And (substProp x e a, substProp x e b)
-  | Or (a, b)        -> Or (substProp x e a, substProp x e b)
-  | Impl (a, b)      -> Impl (substProp x e a, substProp x e b)
-  | Forall (y, t, i) -> if x = y then Forall (y, t, i) else Forall (y, subst x e t, substProp x e i)
-  | Exists (y, t, i) -> if x = y then Exists (y, t, i) else Exists (y, subst x e t, substProp x e i)
-  | Eq (t1, t2)      -> Eq (subst x e t1, subst x e t2)
+  | True          -> True
+  | False         -> False
+  | And (a, b)    -> And (substProp x e a, substProp x e b)
+  | Or (a, b)     -> Or (substProp x e a, substProp x e b)
+  | Impl (a, b)   -> Impl (substProp x e a, substProp x e b)
+  | Eq (t1, t2)   -> Eq (subst x e t1, subst x e t2)
+  | Forall c      -> substClos forall x e c
+  | Exists c      -> substClos exists x e c
+
+and substClos : 't. (clos -> 't) -> ident -> term -> clos -> 't =
+  fun ctor x e (y, t, i) -> if x = y then ctor (y, t, i)
+    else ctor (y, subst x e t, substProp x e i)
 
 let rec conv t1 t2 = match t1, t2 with
-  | U n,                U m                -> Z.equal n m
-  | Var x,              Var y              -> x = y
-  | Dom f,              Dom g              -> conv f g
-  | Cod f,              Cod g              -> conv f g
-  | Id x,               Id y               -> conv x y
-  | Com (f1, g1),       Com (f2, g2)       -> conv f1 f2 && conv g1 g2
-  | App (f1, x1),       App (f2, x2)       -> conv f1 f2 && conv x1 x2
-  | Hom (t1, a1, b1),   Hom (t2, a2, b2)   -> conv t1 t2 && conv a1 a2 && conv b1 b2
-  | Eps (x, t1, i1),    Eps (y, t2, i2)    -> convClos (x, t1, i1) (y, t2, i2)
-  | _,                  _                  -> t1 = t2
+  | U n,              U m              -> Z.equal n m
+  | Var x,            Var y            -> x = y
+  | Dom f,            Dom g            -> conv f g
+  | Cod f,            Cod g            -> conv f g
+  | Id x,             Id y             -> conv x y
+  | Com (f1, g1),     Com (f2, g2)     -> conv f1 f2 && conv g1 g2
+  | App (f1, x1),     App (f2, x2)     -> conv f1 f2 && conv x1 x2
+  | Hom (t1, a1, b1), Hom (t2, a2, b2) -> conv t1 t2 && conv a1 a2 && conv b1 b2
+  | Eps c1,           Eps c2           -> convClos c1 c2
+  | _,                _                -> t1 = t2
 
 and convProp e1 e2 = match e1, e2 with
-  | True,               True               -> true
-  | False,              False              -> true
-  | And (a1, b1),       And (a2, b2)       -> convProp a1 a2 && convProp b1 b2
-  | Or (a1, b1),        Or (a2, b2)        -> convProp a1 a2 && convProp b1 b2
-  | Impl (a1, b1),      Impl (a2, b2)      -> convProp a1 a2 && convProp b1 b2
-  | Forall (x, t1, i1), Forall (y, t2, i2) -> convClos (x, t1, i1) (y, t2, i2)
-  | Exists (x, t1, i1), Exists (y, t2, i2) -> convClos (x, t1, i1) (y, t2, i2)
-  | Eq (a1, b1),        Eq (a2, b2)        -> conv a1 a2 && conv b1 b2
-  | _,                  _                  -> false
+  | True,             True             -> true
+  | False,            False            -> true
+  | And (a1, b1),     And (a2, b2)     -> convProp a1 a2 && convProp b1 b2
+  | Or (a1, b1),      Or (a2, b2)      -> convProp a1 a2 && convProp b1 b2
+  | Impl (a1, b1),    Impl (a2, b2)    -> convProp a1 a2 && convProp b1 b2
+  | Eq (a1, b1),      Eq (a2, b2)      -> conv a1 a2 && conv b1 b2
+  | Forall c1,        Forall c2        -> convClos c1 c2
+  | Exists c1,        Exists c2        -> convClos c1 c2
+  | _,                _                -> false
 
 and convClos (x, t1, i1) (y, t2, i2) = conv t1 t2 &&
   let c = freshVar "σ" in convProp (substProp x c i1) (substProp y c i2)
