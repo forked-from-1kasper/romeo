@@ -27,7 +27,7 @@ let eps    (x, t, i) = Eps    (x, t, i)
 let forall (x, t, i) = Forall (x, t, i)
 let exists (x, t, i) = Exists (x, t, i)
 
-let freshVar x = Var (freshName x)
+let freshTerm x = Var (freshName x)
 
 exception VariableNotFound of ident
 exception ExpectedUniv     of term
@@ -50,6 +50,29 @@ let extUniv = function
 let extHom = function
   | Hom (t, a, b) -> (t, a, b)
   | t             -> raise (ExpectedHom t)
+
+let freshVar ns n = match Env.find_opt n ns with Some x -> x | None -> n
+
+let rec salt ns = function
+  | U n -> U n
+  | Var x -> Var (freshVar ns x)
+  | Dom g -> Dom (salt ns g)
+  | Cod g -> Cod (salt ns g)
+  | Id x  -> Id (salt ns x)
+  | Com (g, f) -> Com (salt ns g, salt ns f)
+  | App (f, x) -> App (salt ns f, salt ns x)
+  | Hom (t, a, b) -> Hom (salt ns t, salt ns a, salt ns b)
+  | Eps (x, t, e) -> let y = fresh x in Eps (x, salt ns t, saltProp (Env.add x y ns) e)
+
+and saltProp ns = function
+  | True             -> True
+  | False            -> False
+  | And (a, b)       -> And (saltProp ns a, saltProp ns b)
+  | Or (a, b)        -> Or (saltProp ns a, saltProp ns b)
+  | Impl (a, b)      -> Impl (saltProp ns a, saltProp ns b)
+  | Eq (t1, t2)      -> Eq (salt ns t1, salt ns t2)
+  | Forall (x, t, e) -> let y = fresh x in Forall (x, salt ns t, saltProp (Env.add x y ns) e)
+  | Exists (x, t, e) -> let y = fresh x in Exists (x, salt ns t, saltProp (Env.add x y ns) e)
 
 let rec infer ctx = function
   | U n           -> U (Z.succ n)
@@ -150,7 +173,7 @@ and convProp e1 e2 = match e1, e2 with
   | _,                _                -> false
 
 and convClos (x, t1, i1) (y, t2, i2) = conv t1 t2 &&
-  let c = freshVar "σ" in convProp (substProp x c i1) (substProp y c i2)
+  let c = freshTerm "σ" in convProp (substProp x c i1) (substProp y c i2)
 
 let eqNf t1 t2 = if not (conv t1 t2) then raise (Ineq (t1, t2))
 
