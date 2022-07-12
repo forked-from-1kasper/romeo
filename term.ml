@@ -78,7 +78,7 @@ let rec eval ctx = function
   | Com (f, g)    -> com (eval ctx f) (eval ctx g)
   | App (f, x)    -> app (eval ctx f) (eval ctx x)
   | Hom (t, a, b) -> Hom (eval ctx t, eval ctx a, eval ctx b)
-  | Eps (x, t, e) -> Eps (x, eval ctx t, e)
+  | Eps (x, t, e) -> let t' = eval ctx t in Eps (x, t', evalProp (upVar ctx x t') e)
 
 and com f g = match f, g with
   | Com (g, h), f -> com g (com h f)
@@ -90,6 +90,16 @@ and app f = function
   | Com (x, y) -> com (app f x) (app f y)
   | Id x       -> Id (app f x)
   | x          -> App (f, x)
+
+and evalProp ctx = function
+  | True             -> True
+  | False            -> False
+  | And (a, b)       -> And (evalProp ctx a, evalProp ctx b)
+  | Or (a, b)        -> Or (evalProp ctx a, evalProp ctx b)
+  | Impl (a, b)      -> Impl (evalProp ctx a, evalProp ctx b)
+  | Eq (t1, t2)      -> Eq (eval ctx t1, eval ctx t2)
+  | Forall (x, t, e) -> let t' = eval ctx t in Forall (x, t', evalProp (upVar ctx x t') e)
+  | Exists (x, t, e) -> let t' = eval ctx t in Exists (x, t', evalProp (upVar ctx x t') e)
 
 let rec subst x e = function
   | U n           -> U n
