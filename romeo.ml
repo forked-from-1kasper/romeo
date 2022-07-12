@@ -1,22 +1,28 @@
+open Deriv
 open Ident
 open Term
 
-type proof =
-  | PVar   of ident
-  | Absurd of proof                                          (* ⊥ ⊢ A *)
-  | Conj   of proof * proof                           (* A, B ⊢ A ∧ B *)
-  | Fst    of proof                                      (* A ∧ B ⊢ A *)
-  | Snd    of proof                                      (* A ∧ B ⊢ B *)
-  | Left   of proof                                      (* A ⊢ A ∨ B *)
-  | Right  of proof                                      (* B ⊢ A ∨ B *)
-  | Disj   of proof * proof               (* A → C, B → C ⊢ A ∨ B → C *)
-  | Lam    of ident * proof                        (* (A ⊢ B) ⊢ A → B *)
-  | Mp     of proof * proof                           (* A, A → B ⊢ B *)
-  | Exis   of term * proof                          (* P x ⊢ ∃ x, P x *)
-  | Refl   of term                                           (* a = a *)
-  | Symm   of proof                                  (* a = b ⊢ b = a *)
-  | Trans  of proof * proof                   (* a = b, b = c ⊢ a = c *)
-  | Subst  of ident * prop * proof * proof      (* a = b, P(a) ⊢ P(b) *)
-  | Choice of term * proof              (* H : ∃ x, P x ⊢ P(ε x, P x) *)
+type cmdline =
+  | Help
 
-let () = Printf.printf "Hello, World!\n"
+let banner = "Castle Romeo theorem prover, version 0.0.0"
+let help =
+"   invoke = romeo | romeo list
+     list = [] | command list
+  command = help"
+
+let defaults : cmdline list -> cmdline list = function
+  | [] -> [Help]
+  | xs -> xs
+
+let rec parseArgs : string list -> cmdline list = function
+  | "help" :: rest -> Help :: parseArgs rest
+  | x :: xs -> Printf.printf "Unknown command “%s”\n" x; parseArgs xs
+  | [] -> []
+
+let cmd : cmdline -> unit = function
+  | Help -> print_endline banner; print_endline help
+
+let () = Array.to_list Sys.argv
+         |> List.tl  |> parseArgs
+         |> defaults |> List.iter cmd
