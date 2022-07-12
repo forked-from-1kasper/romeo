@@ -163,10 +163,8 @@ let rec check ctx = function
                      let (t2, a, b2) = extHom (check ctx f) in
                      eqNf t1 t2; eqNf b1 b2; Hom (t1, a, c)
   | App (f, x)    -> checkAp ctx f x
-  | Hom (t, a, b) -> let c = check ctx t in
-                     ignore (extUniv c);
-                     eqNf t (infer ctx a);
-                     eqNf t (infer ctx b);
+  | Hom (t, a, b) -> let c = check ctx t in ignore (extUniv c);
+                     eqNf t (infer ctx a); eqNf t (infer ctx b);
                      U (extUniv c)
   | Eps (x, t, e) -> ignore (check ctx t); checkProp (upVar ctx x t) e; t
 
