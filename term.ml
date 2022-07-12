@@ -29,11 +29,19 @@ let exists (x, t, i) = Exists (x, t, i)
 
 let freshVar x = Var (freshName x)
 
-type ctx = term Env.t
-
 exception VariableNotFound of ident
 exception ExpectedUniv     of term
 exception ExpectedHom      of term
+exception Ineq             of term * term
+
+type ctx = term Env.t
+
+let upVar ctx x t = Env.add x t ctx
+
+let lookup ctx x =
+  match Env.find_opt x ctx with
+  | None   -> raise (VariableNotFound x)
+  | Some t -> t
 
 let extUniv = function
   | U n -> n
@@ -42,11 +50,6 @@ let extUniv = function
 let extHom = function
   | Hom (t, a, b) -> (t, a, b)
   | t             -> raise (ExpectedHom t)
-
-let lookup ctx x =
-  match Env.find_opt x ctx with
-  | None   -> raise (VariableNotFound x)
-  | Some t -> t
 
 let rec infer ctx = function
   | U n           -> U (Z.succ n)
@@ -138,3 +141,42 @@ and convProp e1 e2 = match e1, e2 with
 
 and convClos (x, t1, i1) (y, t2, i2) = conv t1 t2 &&
   let c = freshVar "σ" in convProp (substProp x c i1) (substProp y c i2)
+
+let eqNf t1 t2 = if not (conv t1 t2) then raise (Ineq (t1, t2))
+
+let rec check ctx = function
+  | U n           -> U (Z.succ n)
+  | Var x         -> lookup ctx x
+  | Dom g | Cod g -> let (t, _, _) = extHom (check ctx g) in t
+  | Id x          -> Hom (check ctx x, x, x)
+  | Com (g, f)    -> let (t1, b1, c) = extHom (check ctx g) in
+                     let (t2, a, b2) = extHom (check ctx f) in
+                     eqNf t1 t2; eqNf b1 b2; Hom (t1, a, c)
+  | App (f, x)    -> checkAp ctx f x
+  | Hom (t, a, b) -> let c = check ctx t in
+                     eqNf t (infer ctx a);
+                     eqNf t (infer ctx b);
+                     U (extUniv c)
+  | Eps (x, t, e) -> ignore (check ctx t); checkProp (upVar ctx x t) e; t
+
+and checkAp ctx f x =
+  match check ctx f, check ctx x with
+  | Hom (U _, c1, c2), Hom (c, a, b) -> eqNf c c1; Hom (c2, App (f, a), App (f, b))
+  | Hom (U _, c1, c2), c             -> eqNf c c1; c2
+  | t,                 _             -> raise (ExpectedUniv t)
+
+and checkProp ctx = function
+  | True          -> ()
+  | False         -> ()
+  | And (a, b)    -> checkProp2 ctx a b
+  | Or (a, b)     -> checkProp2 ctx a b
+  | Impl (a, b)   -> checkProp2 ctx a b
+  | Eq (t1, t2)   -> eqNf (check ctx t1) (check ctx t2)
+  | Forall c      -> checkClos ctx c
+  | Exists c      -> checkClos ctx c
+
+and checkProp2 ctx e1 e2 =
+  checkProp ctx e1; checkProp ctx e2
+
+and checkClos ctx (x, t, e) =
+  checkProp (upVar ctx x t) e
