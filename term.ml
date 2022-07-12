@@ -76,7 +76,7 @@ let rec eval ctx = function
   | Cod g         -> let (_, _, t) = extHom (infer ctx g) in t
   | Id x          -> Id (eval ctx x)
   | Com (f, g)    -> com (eval ctx f) (eval ctx g)
-  | App (f, x)    -> app f x
+  | App (f, x)    -> app (eval ctx f) (eval ctx x)
   | Hom (t, a, b) -> Hom (eval ctx t, eval ctx a, eval ctx b)
   | Eps (x, t, e) -> Eps (x, eval ctx t, e)
 
