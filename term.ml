@@ -136,7 +136,7 @@ let rec conv t1 t2 = match t1, t2 with
   | App (f1, x1),     App (f2, x2)     -> conv f1 f2 && conv x1 x2
   | Hom (t1, a1, b1), Hom (t2, a2, b2) -> conv t1 t2 && conv a1 a2 && conv b1 b2
   | Eps c1,           Eps c2           -> convClos c1 c2
-  | _,                _                -> t1 = t2
+  | _,                _                -> false
 
 and convProp e1 e2 = match e1, e2 with
   | True,             True             -> true
