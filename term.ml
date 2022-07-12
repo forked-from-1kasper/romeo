@@ -39,6 +39,10 @@ let extUniv = function
   | U n -> n
   | t   -> raise (ExpectedUniv t)
 
+let extHom = function
+  | Hom (t, a, b) -> (t, a, b)
+  | t             -> raise (ExpectedHom t)
+
 let lookup ctx x =
   match Env.find_opt x ctx with
   | None   -> raise (VariableNotFound x)
@@ -47,28 +51,26 @@ let lookup ctx x =
 let rec infer ctx = function
   | U n           -> U (Z.succ n)
   | Var x         -> lookup ctx x
-  | Dom g | Cod g -> let (t, _, _) = extHom ctx g in t
+  | Dom g | Cod g -> let (t, _, _) = extHom (infer ctx g) in t
   | Id x          -> Hom (infer ctx x, x, x)
-  | Com (g, f)    -> let (t, _, c) = extHom ctx g in let (_, a, _) = extHom ctx f in Hom (t, a, c)
+  | Com (g, f)    -> let (t, _, c) = extHom (infer ctx g) in
+                     let (_, a, _) = extHom (infer ctx f) in
+                     Hom (t, a, c)
   | App (f, x)    -> inferAp ctx f x
   | Hom (t, _, _) -> U (extUniv (infer ctx t))
   | Eps (_, t, _) -> t
 
-and extHom ctx g =
-  match infer ctx g with
-  | Hom (t, a, b) -> (t, a, b)
-  | t             -> raise (ExpectedHom t)
-
 and inferAp ctx f x =
-  let (_, _, c) = extHom ctx f in match infer ctx x with
+  let (_, _, c) = extHom (infer ctx f) in
+  match infer ctx x with
   | Hom (_, a, b) -> Hom (c, App (f, a), App (f, b))
   | _             -> c
 
 let rec eval ctx = function
   | U n           -> U n
   | Var x         -> Var x
-  | Dom g         -> let (_, t, _) = extHom ctx g in t
-  | Cod g         -> let (_, _, t) = extHom ctx g in t
+  | Dom g         -> let (_, t, _) = extHom (infer ctx g) in t
+  | Cod g         -> let (_, _, t) = extHom (infer ctx g) in t
   | Id x          -> Id (eval ctx x)
   | Com (f, g)    -> com (eval ctx f) (eval ctx g)
   | App (f, x)    -> app f x
