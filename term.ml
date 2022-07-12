@@ -211,4 +211,4 @@ and checkProp2 ctx e1 e2 =
   checkProp ctx e1; checkProp ctx e2
 
 and checkClos ctx (x, t, e) =
-  checkProp (upVar ctx x t) e
+  ignore (check ctx t); checkProp (upVar ctx x t) e
