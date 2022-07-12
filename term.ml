@@ -54,15 +54,15 @@ let extHom = function
 let freshVar ns n = match Env.find_opt n ns with Some x -> x | None -> n
 
 let rec salt ns = function
-  | U n -> U n
-  | Var x -> Var (freshVar ns x)
-  | Dom g -> Dom (salt ns g)
-  | Cod g -> Cod (salt ns g)
-  | Id x  -> Id (salt ns x)
-  | Com (g, f) -> Com (salt ns g, salt ns f)
-  | App (f, x) -> App (salt ns f, salt ns x)
-  | Hom (t, a, b) -> Hom (salt ns t, salt ns a, salt ns b)
-  | Eps (x, t, e) -> let y = fresh x in Eps (x, salt ns t, saltProp (Env.add x y ns) e)
+  | U n              -> U n
+  | Var x            -> Var (freshVar ns x)
+  | Dom g            -> Dom (salt ns g)
+  | Cod g            -> Cod (salt ns g)
+  | Id x             -> Id (salt ns x)
+  | Com (g, f)       -> Com (salt ns g, salt ns f)
+  | App (f, x)       -> App (salt ns f, salt ns x)
+  | Hom (t, a, b)    -> Hom (salt ns t, salt ns a, salt ns b)
+  | Eps (x, t, e)    -> let y = fresh x in Eps (x, salt ns t, saltProp (Env.add x y ns) e)
 
 and saltProp ns = function
   | True             -> True
