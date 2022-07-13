@@ -18,3 +18,4 @@ type proof =
   | Trans  of proof * proof                   (* a = b, b = c ⊢ a = c *)
   | Subst  of ident * prop * proof * proof      (* a = b, P(a) ⊢ P(b) *)
   | Choice of term * proof              (* H : ∃ x, P x ⊢ P(ε x, P x) *)
+

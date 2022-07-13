@@ -4,7 +4,6 @@ version: "0.0.0"
 depends: [
   "dune" {>= "2.0"}
   "ocaml" {>= "4.10"}
-  "zarith" {>= "1.12"}
   "menhir" {>= "20200123"}
 ]
 build: [

@@ -6,20 +6,18 @@ module Ident = struct
     if s1 = s2 then compare i1 i2 else compare s1 s2
 end
 
-let getDigit x = Char.chr (Z.to_int x + 0x80) |> Printf.sprintf "\xE2\x82%c"
-let ten = Z.of_int 10
+let getDigit x = Char.chr (x + 0x80) |> Printf.sprintf "\xE2\x82%c"
 
 let rec showSubscript x =
-  if Z.lt x Z.zero then failwith "showSubscript: expected positive integer"
-  else if Z.equal x Z.zero then "" else let (y, d) = Z.div_rem x ten in
-    showSubscript y ^ getDigit d
+  if x < 0L then failwith "showSubscript: expected positive integer"
+  else if x = 0L then "" else
+    let (y, d) = (Int64.div x 10L, Int64.rem x 10L) in
+    showSubscript y ^ getDigit (Int64.to_int d)
 
 module Env = Map.Make(Ident)
 
 let gidx : int64 ref = ref 0L
 let gen () = gidx := Int64.succ !gidx; !gidx
 
-let freshName x = let n = gen () in
-  (x ^ showSubscript (Z.of_int64 n), n)
-
+let freshName x = let n = gen () in (x ^ showSubscript n, n)
 let fresh (p, _) = (p, gen ())

@@ -1,4 +1,4 @@
 (env (dev (flags (:standard -warn-error -A))))
 ;(ocamllex lexer)
 ;(menhir (modules parser))
-(executable (name romeo) (libraries zarith) (package romeo) (public_name romeo))
+(executable (name romeo) (package romeo) (public_name romeo))

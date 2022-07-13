@@ -1,7 +1,11 @@
 open Ident
 
+type nat =
+  | Zero
+  | Succ of nat
+
 type term =
-  | U      of Z.t
+  | U      of nat
   | Var    of ident
   | Dom    of term
   | Cod    of term
@@ -75,7 +79,7 @@ and saltProp ns = function
   | Exists (x, t, e) -> let y = fresh x in Exists (x, salt ns t, saltProp (Env.add x y ns) e)
 
 let rec infer ctx = function
-  | U n           -> U (Z.succ n)
+  | U n           -> U (Succ n)
   | Var x         -> lookup ctx x
   | Dom g | Cod g -> let (t, _, _) = extHom (infer ctx g) in t
   | Id x          -> Hom (infer ctx x, x, x)
@@ -150,7 +154,7 @@ and substClos : 't. (clos -> 't) -> ident -> term -> clos -> 't =
     else ctor (y, subst x e t, substProp x e i)
 
 let rec conv t1 t2 = match t1, t2 with
-  | U n,              U m              -> Z.equal n m
+  | U n,              U m              -> n = m
   | Var x,            Var y            -> x = y
   | Dom f,            Dom g            -> conv f g
   | Cod f,            Cod g            -> conv f g
@@ -178,7 +182,7 @@ and convClos (x, t1, i1) (y, t2, i2) = conv t1 t2 &&
 let eqNf t1 t2 = if not (conv t1 t2) then raise (Ineq (t1, t2))
 
 let rec check ctx = function
-  | U n           -> U (Z.succ n)
+  | U n           -> U (Succ n)
   | Var x         -> lookup ctx x
   | Dom g | Cod g -> let (t, _, _) = extHom (check ctx g) in t
   | Id x          -> Hom (check ctx x, x, x)
