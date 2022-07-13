@@ -193,7 +193,7 @@ let rec check ctx = function
   | Hom (t, a, b) -> let c = check ctx t in ignore (extUniv c);
                      eqNf t (infer ctx a); eqNf t (infer ctx b);
                      U (extUniv c)
-  | Eps (x, t, e) -> ignore (check ctx t); checkProp (upVar ctx x t) e; t
+  | Eps (x, t, e) -> ignore (extUniv (check ctx t)); checkProp (upVar ctx x t) e; t
 
 and checkAp ctx f x =
   match check ctx f, check ctx x with
@@ -215,4 +215,4 @@ and checkProp2 ctx e1 e2 =
   checkProp ctx e1; checkProp ctx e2
 
 and checkClos ctx (x, t, e) =
-  ignore (check ctx t); checkProp (upVar ctx x t) e
+  ignore (extUniv (check ctx t)); checkProp (upVar ctx x t) e

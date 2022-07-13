@@ -6,6 +6,8 @@ module Ident = struct
     if s1 = s2 then compare i1 i2 else compare s1 s2
 end
 
+let ident s = (s, 0L)
+
 let getDigit x = Char.chr (x + 0x80) |> Printf.sprintf "\xE2\x82%c"
 
 let rec showSubscript x =

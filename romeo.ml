@@ -1,6 +1,7 @@
 open Deriv
 open Ident
 open Term
+open Pp
 
 type cmdline =
   | Help
