@@ -1,3 +1,4 @@
+open Parser
 open Deriv
 open Ident
 open Term
