@@ -5,7 +5,7 @@ type sexp =
   | Node of sexp list
 
 type command =
-  | Def of string * string list * sexp
+  | Def of sexp * sexp
   | Eof
 
 let rec replace x e = function
@@ -20,7 +20,7 @@ let atom s  = Atom s
 let node xs = Node xs
 
 let ws             = str (fun c -> c = ' ' || c = '\n' || c = '\t' || c = '\t')
-let keywords       = ["definition"; "theorem"; ":="]
+let keywords       = ["definition"; "theorem"; "infix"; "keyword"; ":="]
 let reserved       = ['('; ')'; '\n'; '\t'; '\r'; ' ']
 let isReserved   c = List.mem c reserved
 let isntReserved c = not (List.mem c reserved)
@@ -30,9 +30,10 @@ let ident = decorateErrors ["ident"] (guard isntKeyword (str isntReserved))
 let sexp = fix (fun p -> (node <$> (ch '(' >> many ws >> many p << ch ')'))
                      <|> (atom <$> ident) << many ws)
 
-let def = token "definition" >> many ws >> ident >>=
-  fun i -> many ws >> sepBy (many ws) ident >>=
-    fun is -> many ws >> token ":=" >> many ws >> many1 sexp >>=
-      fun e -> pure (Def (i, is, Node e))
+let sexpToplevel = node <$> many1 sexp
+
+let def = token "definition" >> many ws >> sexpToplevel >>=
+  fun e1 -> many ws >> token ":=" >> many ws >> sexpToplevel >>=
+    fun e2 -> pure (Def (e1, e2))
 
 let cmd = many ws >> def <|> (eof >> pure Eof)

@@ -1,8 +1,8 @@
 open Parser
 
 let perform = function
-  | Def (i, is, e) -> ()
-  | Eof            -> ()
+  | Def (e1, e2) -> Printf.printf "%s & %s\n" (showSExp e1) (showSExp e2)
+  | Eof          -> ()
 
 let checkFile filename =
   let chan  = open_in filename in
