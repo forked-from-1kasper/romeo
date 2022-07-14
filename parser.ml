@@ -30,7 +30,8 @@ let ident = decorateErrors ["ident"] (guard isntKeyword (str isntReserved))
 let sexp = fix (fun p -> (node <$> (ch '(' >> many ws >> many p << ch ')'))
                      <|> (atom <$> ident) << many ws)
 
-let sexpToplevel = node <$> many1 sexp
+let sexpToplevel = sexp >>= fun x -> many sexp >>= fun xs ->
+  pure (match xs with [] -> x | _ -> Node (x :: xs))
 
 let def = token "definition" >> many ws >> sexpToplevel >>=
   fun e1 -> many ws >> token ":=" >> many ws >> sexpToplevel >>=
