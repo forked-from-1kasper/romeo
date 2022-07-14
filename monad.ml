@@ -93,7 +93,7 @@ let mkErrorMsg input pos expected = let width = 10 in
     String.init (2 * width + 1) (fun idx -> makeMonospaced (input.get (pos - width + idx)))
   ^ "\n" ^ String.make width ' ' ^ "^\n" ^ "expected: " ^ String.concat " | " expected
 
-let runParser p input = match p input 0 with
+let runParser p input pos = match p input pos with
   | Done (pos, r)        -> Ok (pos, r)
   | Fail (pos, expected) -> Error (mkErrorMsg input pos expected)
 
