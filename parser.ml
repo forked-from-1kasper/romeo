@@ -12,7 +12,7 @@ let atom s  = Atom s
 let node xs = Node xs
 
 let ws       = str (fun c -> c = ' ' || c = '\n' || c = '\t' || c = '\t')
-let reserved = ['('; ')'; ':'; '\n'; '\t'; '\r'; ' ']
+let reserved = ['('; ')'; '\n'; '\t'; '\r'; ' ']
 let ident    = str (fun c -> not (List.mem c reserved))
                |> decorateErrors ["ident"]
 
