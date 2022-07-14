@@ -16,5 +16,5 @@ let reserved = ['('; ')'; ':'; '\n'; '\t'; '\r'; ' ']
 let ident    = str (fun c -> not (List.mem c reserved))
                |> decorateErrors ["ident"]
 
-let sexp = fix (fun p -> (atom <$> (ident << many ws))
-                     <|> (node <$> (ch '(' >> many p << ch ')' << many ws)))
+let sexp = fix (fun p -> (node <$> (ch '(' >> many ws >> many p << ch ')'))
+                     <|> (atom <$> ident) << many ws)

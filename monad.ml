@@ -101,3 +101,9 @@ let ofString s : reader =
   { size = String.length s;
     get  = fun n -> if n < 0 || n >= String.length s then ' '
                     else String.get s n }
+
+let ofChan ch : reader =
+  let size = in_channel_length ch in
+  { size = size;
+    get  = fun n -> if n < 0 || n >= size then ' '
+                    else (seek_in ch n; input_char ch) }
