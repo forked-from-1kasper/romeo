@@ -30,7 +30,6 @@ let failure  = fun _ pos -> Fail (pos, [])
 let (<|>) p q = fun input pos ->
   match p input pos with
   | Fail (pos1, expected1) ->
-    if pos1 <> pos then Fail (pos1, expected1) else
     begin match q input pos with
     | Fail (pos2, expected2) ->
       if pos1 < pos2 then
@@ -82,6 +81,11 @@ let sepBy1 sep p = List.cons <$> p <*> many (sep >> p)
 let sepBy  sep p = sepBy1 sep p <|> pure []
 
 let str p = (String.of_seq % List.to_seq) <$> many1 (sat p)
+
+let guard f p = p >>= fun x -> if f x then pure x else failure
+
+let remaining = fun input pos -> Done (pos, input.size - pos)
+let eof = decorateErrors ["<end-of-file>"] (guard ((=) 0) remaining >> eps)
 
 let makeMonospaced = function
   | '\n' -> ' '

@@ -1,0 +1,8 @@
+definition test X :=
+∀ (x : X), x = x
+
+definition test′ X Y :=
+∃ (x : X) (y : Y), ∀ (f : Hom U X Y), f x = y
+
+definition test″ :=
+∀ (C : U), C
