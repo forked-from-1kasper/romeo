@@ -50,7 +50,7 @@ let anyChar : char parser =
       Done (pos + 1, input.get pos)
     else Fail (pos, [])
 
-let sat (p : char -> bool) : char parser =
+let sat p : char parser =
   fun input pos ->
     if pos < input.size then
       let c = input.get pos in
@@ -58,7 +58,7 @@ let sat (p : char -> bool) : char parser =
     else Fail (pos, [])
 
 let eps : unit parser = pure ()
-let ch (c : char) = sat ((=) c) >> eps |> decorateErrors [String.make 1 c]
+let ch c = sat ((=) c) >> eps |> decorateErrors [String.make 1 c]
 let token s =
   Seq.fold_left (fun x c -> x >> ch c) eps (String.to_seq s)
   |> decorateErrors [s]
