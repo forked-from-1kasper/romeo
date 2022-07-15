@@ -1,3 +1,5 @@
+postulate A B C D : U
+
 definition test X :=
 ∀ (x : X), x = x ⊃ ∃ (f : Hom C x x),
     f ∘ f ∘ f ∘ f ∘ f = id x
@@ -11,3 +13,14 @@ definition test″ :=
 
 definition diag A :=
 A × A
+
+
+#infer Hom U₂ U₁ U₁
+
+#eval U₃
+
+postulate f : Hom U A B
+postulate g : Hom U B C
+postulate h : Hom U C D
+
+#eval (h ∘ g) ∘ f

@@ -74,6 +74,8 @@ let fix f =
   let rec loop reps = if reps = 0 then failure else f (loop (reps - 1))
   in fun input pos -> loop (input.size - pos + 1) input pos
 
+let optional p = p <|> eps
+
 let many  p = foldr List.cons p []
 let many1 p = List.cons <$> p <*> many p
 

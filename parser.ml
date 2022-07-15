@@ -8,7 +8,11 @@ type sexp =
   | Node of sexp list
 
 type command =
-  | Def of sexp * sexp
+  | Eval      of sexp
+  | Infer     of sexp
+  | Postulate of string list * sexp
+  | Def       of sexp * sexp
+  | Comment   of string
   | Eof
 
 let rec replace x e = function
@@ -22,26 +26,48 @@ let rec showSExp = function
 let atom s  = Atom s
 let node xs = Node xs
 
-let ws             = str (fun c -> c = ' ' || c = '\n' || c = '\t' || c = '\t')
-let keywords       = ["definition"; "theorem"; "infix"; "keyword"; ":="]
+(* first stage parser *)
+let numSubscript =
+  ["₀"; "₁"; "₂"; "₃"; "₄"; "₅"; "₆"; "₇"; "₈"; "₉"]
+  |> List.mapi (fun idx s -> token s >> pure idx)
+  |> List.fold_left (<|>) failure
+
+let digits ns = let deg = ref 1 in let m = ref 0 in
+  List.iter (fun d -> m := !m + d * !deg; deg := !deg * 10) (List.rev ns); !m
+
+let universe = digits <$> (ch 'U' >> many numSubscript)
+
+let ws             = str (fun c -> c = ' ' || c = '\n' || c = '\t' || c = '\t') >> Monad.eps
+let keywords       = ["definition"; "theorem"; "infix"; "keyword"; "postulate"; "#infer"; "#eval"; ":="]
 let reserved       = ['('; ')'; '\n'; '\t'; '\r'; ' ']
 let isReserved   c = List.mem c reserved
 let isntReserved c = not (List.mem c reserved)
 let isntKeyword  s = not (List.mem s keywords)
 
 let ident = decorateErrors ["ident"] (guard isntKeyword (str isntReserved))
-let sexp = fix (fun p -> (node <$> (ch '(' >> many ws >> many p << ch ')'))
-                     <|> (atom <$> ident) << many ws)
+let sexp = fix (fun p -> (node <$> (ch '(' >> optional ws >> many p << ch ')'))
+                     <|> (atom <$> ident) << optional ws)
 
 let sexpToplevel = sexp >>= fun x -> many sexp >>= fun xs ->
   pure (match xs with [] -> x | _ -> Node (x :: xs))
 
-let def = token "definition" >> many ws >> sexpToplevel >>=
-  fun e1 -> many ws >> token ":=" >> many ws >> sexpToplevel >>=
+let def = token "definition" >> ws >> sexpToplevel >>=
+  fun e1 -> optional ws >> token ":=" >> ws >> sexpToplevel >>=
     fun e2 -> pure (Def (e1, e2))
 
-let cmd = many ws >> def <|> (eof >> pure Eof)
+let debug ident fn = token ident >> ws >> sexpToplevel >>= fun e -> pure (fn e)
 
+let comment = ch ';' >> str (fun c -> c <> '\n' && c <> '\r') >>= fun s -> optional ws >> pure (Comment s)
+
+let postulate = token "postulate" >> ws >> sepBy1 ws (guard ((<>) ":") ident) << ws >>=
+  fun is -> token ":" >> ws >> sexpToplevel >>= fun e -> pure (Postulate (is, e))
+
+let infer = debug "#infer" (fun e -> Infer e)
+let eval  = debug "#eval"  (fun e -> Eval e)
+
+let cmd = optional ws >> comment <|> def <|> postulate <|> infer <|> eval <|> (eof >> pure Eof)
+
+(* second stage parser *)
 type associativity = Left | Right | Binder
 
 let builtinInfix = [
@@ -101,8 +127,15 @@ and unpack = function
 
 exception InvalidSyntax of sexp
 
+let rec ofNat n = if n <= 0 then Zero else Succ (ofNat (n - 1))
+
+let expandVar x =
+  match runParser universe (ofString x) 0 with
+  | Ok (_, n) -> U (ofNat n)
+  | Error _   -> Var (Ident.ident x)
+
 let rec expandTerm = function
-  | Atom x                                    -> Var (Ident.ident x)
+  | Atom x                                    -> expandVar x
   | Node [Atom "cod"; x]                      -> Cod (expandTerm x)
   | Node [Atom "dom"; x]                      -> Dom (expandTerm x)
   | Node [Atom "id"; x]                       -> Id  (expandTerm x)
