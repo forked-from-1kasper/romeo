@@ -1,7 +1,7 @@
 open Parser
 
 let perform = function
-  | Def (e1, e2) -> Printf.printf "%s & %s\n" (showSExp e1) (showSExp e2)
+  | Def (e1, e2) -> Printf.printf "%s & %s\n" (showSExp e1) (showSExp (unpack e2))
   | Eof          -> ()
 
 let checkFile filename =

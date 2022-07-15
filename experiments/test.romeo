@@ -1,8 +1,13 @@
 definition test X :=
-∀ (x : X), x = x
+∀ (x : X), x = x ⊃ ∃ (f : Hom C x x),
+    f ∘ f ∘ f ∘ f ∘ f = id x
+  ∧ f ∘ f = id x ∧ (f ∘ f ∘ f = f ∨ f ∘ f = f)
 
 definition test′ X Y :=
 ∃ (x : X) (y : Y), ∀ (f : Hom U X Y), f x = y
 
 definition test″ :=
-∀ (C : U), C
+∀ (C : U), C = C
+
+definition diag A :=
+A × A

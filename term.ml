@@ -30,6 +30,7 @@ and clos = ident * term * prop
 let eps    (x, t, i) = Eps    (x, t, i)
 let forall (x, t, i) = Forall (x, t, i)
 let exists (x, t, i) = Exists (x, t, i)
+let app f x          = App    (f, x)
 
 let freshTerm x = Var (freshName x)
 

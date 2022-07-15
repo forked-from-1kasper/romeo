@@ -27,7 +27,7 @@ and ppProp paren e =
   | False            -> "⊥"
   | And (a, b)       -> Printf.sprintf "%s ∧ %s" (ppProp true a) (showProp b)
   | Or (a, b)        -> Printf.sprintf "%s ∨ %s" (ppProp true a) (showProp b)
-  | Impl (a, b)      -> Printf.sprintf "%s → %s" (ppProp true a) (showProp b)
+  | Impl (a, b)      -> Printf.sprintf "%s ⊃ %s" (ppProp true a) (showProp b)
   | Eq (t1, t2)      -> Printf.sprintf "%s = %s" (showTerm t1) (showTerm t2)
   | Forall (i, t, e) -> Printf.sprintf "∀ (%s : %s), %s" (showIdent i) (showTerm t) (showProp e)
   | Exists (i, t, e) -> Printf.sprintf "∃ (%s : %s), %s" (showIdent i) (showTerm t) (showProp e)
