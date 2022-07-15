@@ -118,10 +118,12 @@ and expandProp = function
   | Node [a; Atom "∨"; b]                     -> Or  (expandProp a, expandProp b)
   | Node [a; Atom "⊃"; b]                     -> And (expandProp a, expandProp b)
   | Node [t1; Atom "="; t2]                   -> Eq  (expandTerm t1, expandTerm t2)
-  | Node [Node (Atom "∀" :: bs); Atom ","; e] -> List.fold_left (fun e0 b -> let (i, t) = expandBinder b in Forall (i, t, e0)) (expandProp e) bs
-  | Node [Node (Atom "∃" :: bs); Atom ","; e] -> List.fold_left (fun e0 b -> let (i, t) = expandBinder b in Exists (i, t, e0)) (expandProp e) bs
-  | e                                         -> Printf.printf "FAIL: %s\n" (showSExp e); raise (InvalidSyntax e)
+  | Node [Node (Atom "∀" :: bs); Atom ","; e] -> expandBinders forall bs e
+  | Node [Node (Atom "∃" :: bs); Atom ","; e] -> expandBinders exists bs e
+  | e                                         -> raise (InvalidSyntax e)
 and expandBinder = function
   | Node [Atom i; Atom ":"; t]      -> (Ident.ident i, expandTerm t)
   | Node (Atom i :: Atom ":" :: ts) -> (Ident.ident i, expandTerm (Node ts))
   | e                               -> raise (InvalidSyntax e)
+and expandBinders c bs e =
+  List.fold_left (fun e0 b -> let (i, t) = expandBinder b in c (i, t, e0)) (expandProp e) bs
