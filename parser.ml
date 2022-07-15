@@ -50,6 +50,7 @@ let builtinInfix = [
 ]
 let operators = ref (Dict.of_seq (List.to_seq builtinInfix))
 
+(* From: https://rosettacode.org/wiki/Parsing/Shunting-yard_algorithm#OCaml *)
 let splitWhile p =
   let rec go ls = function
     | x :: xs when p x -> go (x :: ls) xs
