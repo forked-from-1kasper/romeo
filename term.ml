@@ -104,7 +104,7 @@ let rec eval ctx = function
   | Cod g         -> let (_, _, t) = extHom (infer ctx g) in t
   | Id x          -> Id (eval ctx x)
   | Com (f, g)    -> com (eval ctx f) (eval ctx g)
-  | App (f, x)    -> app (eval ctx f) (eval ctx x)
+  | App (f, x)    -> evalApp (eval ctx f) (eval ctx x)
   | Hom (t, a, b) -> Hom (eval ctx t, eval ctx a, eval ctx b)
   | Eps (x, t, e) -> let t' = eval ctx t in Eps (x, t', evalProp (upVar ctx x t') e)
 
@@ -114,10 +114,11 @@ and com f g = match f, g with
   | f, Id _       -> f
   | f, g          -> Com (f, g)
 
-and app f = function
-  | Com (x, y) -> com (app f x) (app f y)
-  | Id x       -> Id (app f x)
-  | x          -> App (f, x)
+and evalApp f x = match f, x with
+  | Com (g, f), _ -> evalApp g (evalApp f x)
+  | _, Com (x, y) -> com (evalApp f x) (evalApp f y)
+  | _, Id x       -> Id (evalApp f x)
+  | _, _          -> App (f, x)
 
 and evalProp ctx = function
   | True             -> True

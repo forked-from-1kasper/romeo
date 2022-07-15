@@ -16,7 +16,7 @@ let rec ppTerm paren t =
   | Cod g         -> "cod " ^ ppTerm true g
   | Id x          -> "id " ^ ppTerm true x
   | Com (g, f)    -> Printf.sprintf "%s ∘ %s" (showTerm g) (showTerm f)
-  | App (f, x)    -> Printf.sprintf "%s %s" (showTerm f) (ppTerm true x)
+  | App (f, x)    -> Printf.sprintf "%s %s" (ppTerm true f) (ppTerm true x)
   | Hom (t, a, b) -> Printf.sprintf "Hom %s %s %s" (ppTerm true t) (ppTerm true a) (ppTerm true b)
   | Eps (i, t, e) -> Printf.sprintf "ε (%s : %s), %s" (showIdent i) (showTerm t) (showProp e)
   in match t with U _ | Var _ -> s | _ -> parens paren s
@@ -35,3 +35,10 @@ and ppProp paren e =
 
 and showTerm t = ppTerm false t
 and showProp e = ppProp false e
+
+let showError = function
+  | VariableNotFound x -> Printf.sprintf "Unbound variable “%s”." (showIdent x)
+  | ExpectedUniv t     -> Printf.sprintf "“%s” expected to be a universe." (showTerm t)
+  | ExpectedHom t      -> Printf.sprintf "“%s” expected to be Hom." (showTerm t)
+  | Ineq (t1, t2)      -> Printf.sprintf "%s\n  ≠\n%s" (showTerm t1) (showTerm t2)
+  | ex                 -> Printf.sprintf "Uncaught exception: %s" (Printexc.to_string ex)

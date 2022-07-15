@@ -26,6 +26,6 @@ let checkFile filename =
     match Monad.runParser cmd input !pos with
     | Error err   -> Printf.printf "Parse error:\n%s\n" err; eof := true
     | Ok (_, Eof) -> eof := true
-    | Ok (n, c)   -> pos := n; perform c
+    | Ok (n, c)   -> pos := n; (try perform c with err -> print_endline (Pp.showError err))
   done;
   close_in chan

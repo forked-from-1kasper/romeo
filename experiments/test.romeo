@@ -24,3 +24,7 @@ postulate g : Hom U B C
 postulate h : Hom U C D
 
 #eval (h ∘ g) ∘ id B ∘ (f ∘ id A)
+
+postulate x : A
+
+#eval (g ∘ f) x
