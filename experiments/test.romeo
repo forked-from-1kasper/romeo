@@ -29,4 +29,7 @@ postulate x y z : A
 postulate f : Hom A x y
 postulate g : Hom A y z
 
-#infer (G ∘ F) (g ∘ f)
+#eval (G ∘ F) (g ∘ f)
+
+postulate ρ : Hom U (Hom A x z) A
+#eval ρ (g ∘ f)

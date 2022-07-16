@@ -92,10 +92,9 @@ let rec infer ctx = function
   | Eps (_, t, _) -> t
 
 and inferAp ctx f x =
-  let (_, _, c) = extHom (infer ctx f) in
-  match infer ctx x with
-  | Hom (_, a, b) -> Hom (c, evalApp f a, evalApp f b)
-  | _             -> c
+  let (_, c1, c2) = extHom (infer ctx f) in match infer ctx x with
+  | Hom (c, a, b) when conv ctx c c1 -> Hom (c2, evalApp ctx f a, evalApp ctx f b)
+  | _                                -> c2
 
 and eval ctx = function
   | U n           -> U n
@@ -104,7 +103,7 @@ and eval ctx = function
   | Cod g         -> cod ctx g
   | Id x          -> Id (eval ctx x)
   | Com (f, g)    -> com (eval ctx f) (eval ctx g)
-  | App (f, x)    -> evalApp (eval ctx f) (eval ctx x)
+  | App (f, x)    -> evalApp ctx (eval ctx f) (eval ctx x)
   | Hom (t, a, b) -> Hom (eval ctx t, eval ctx a, eval ctx b)
   | Eps (x, t, e) -> let t' = eval ctx t in Eps (x, t', evalProp (upVar ctx x t') e)
 
@@ -117,11 +116,11 @@ and com f g = match f, g with
   | f, Id _       -> f
   | f, g          -> Com (f, g)
 
-and evalApp f x = match f, x with
-  | Com (g, f), _ -> evalApp g (evalApp f x)
-  | _, Com (x, y) -> com (evalApp f x) (evalApp f y)
-  | _, Id x       -> Id (evalApp f x)
-  | _, _          -> App (f, x)
+and evalApp ctx f x = let (_, c1, _) = extHom (infer ctx f) in match f, x, infer ctx x with
+  | Com (g, f), _,          _                                  -> evalApp ctx g (evalApp ctx f x)
+  | _,          Com (x, y), Hom (c2, _, _) when conv ctx c1 c2 -> com (evalApp ctx f x) (evalApp ctx f y)
+  | _,          Id x,       _                                  -> Id (evalApp ctx f x)
+  | _,          _,          _                                  -> App (f, x)
 
 and evalProp ctx = function
   | True             -> True
@@ -133,13 +132,13 @@ and evalProp ctx = function
   | Forall (x, t, e) -> let t' = eval ctx t in Forall (x, t', evalProp (upVar ctx x t') e)
   | Exists (x, t, e) -> let t' = eval ctx t in Exists (x, t', evalProp (upVar ctx x t') e)
 
-let rec subst ctx x e = function
+and subst ctx x e = function
   | U n           -> U n
   | Var y         -> if x = y then e else Var y
   | Dom g         -> dom ctx (subst ctx x e g)
   | Cod g         -> cod ctx (subst ctx x e g)
   | Id a          -> Id (subst ctx x e a)
-  | App (f, a)    -> evalApp (subst ctx x e f) (subst ctx x e a)
+  | App (f, a)    -> evalApp ctx (subst ctx x e f) (subst ctx x e a)
   | Com (f, g)    -> com (subst ctx x e f) (subst ctx x e g)
   | Hom (t, a, b) -> Hom (subst ctx x e t, subst ctx x e a, subst ctx x e b)
   | Eps c         -> substClos eps ctx x e c
@@ -158,7 +157,7 @@ and substClos : 't. (clos -> 't) -> term Env.t -> ident -> term -> clos -> 't =
   fun ctor ctx x e (y, t, i) -> if x = y then ctor (y, t, i)
     else ctor (y, subst ctx x e t, substProp ctx x e i)
 
-let rec conv ctx t1 t2 = match t1, t2 with
+and conv ctx t1 t2 = match t1, t2 with
   | U n,              U m              -> n = m
   | Var x,            Var y            -> x = y
   | Dom f,            Dom g            -> conv ctx f g
@@ -200,11 +199,10 @@ let rec check ctx = function
                      U (extUniv c)
   | Eps (x, t, e) -> ignore (extUniv (check ctx t)); checkProp (upVar ctx x t) e; t
 
-and checkAp ctx f x =
-  match check ctx f, check ctx x with
-  | Hom (U _, c1, c2), Hom (c, a, b) -> eqNf ctx c c1; Hom (c2, evalApp f a, evalApp f b)
-  | Hom (U _, c1, c2), c             -> eqNf ctx c c1; c2
-  | t,                 _             -> raise (ExpectedUniv t)
+and checkAp ctx f x = match check ctx f, check ctx x with
+  | Hom (U _, c1, c2), Hom (c, a, b) when conv ctx c c1 -> Hom (c2, evalApp ctx f a, evalApp ctx f b)
+  | Hom (U _, c1, c2), c                                -> eqNf ctx c c1; c2
+  | t,                 _                                -> raise (ExpectedUniv t)
 
 and checkProp ctx = function
   | True          -> ()
