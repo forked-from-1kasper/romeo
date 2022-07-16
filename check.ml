@@ -1,4 +1,5 @@
 open Ident
+open Eval
 open Term
 
 type proof =
@@ -21,36 +22,45 @@ type proof =
   | Choice of ident                     (* H : ∃ x, P x ⊢ P(ε x, P x) *)
 
 exception CheckError     of proof * prop
-exception IneqProp       of prop * prop
-exception ExpectedAnd    of prop
-exception ExpectedImpl   of prop
-exception ExpectedForall of prop
-exception ExpectedExists of prop
-exception ExpectedEq     of prop
 
 type env =
   { term  : term Env.t;
     proof : prop Env.t }
 
-let extAnd = function
-  | And (a, b) -> (a, b)
-  | e          -> raise (ExpectedAnd e)
+let rec check ctx = function
+  | U n           -> U (Succ n)
+  | Var x         -> lookup ctx x
+  | Dom g | Cod g -> let (t, _, _) = extHom (check ctx g) in t
+  | Id x          -> Hom (check ctx x, x, x)
+  | Com (g, f)    -> let (t1, b1, c) = extHom (check ctx g) in
+                     let (t2, a, b2) = extHom (check ctx f) in
+                     eqNf ctx t1 t2; eqNf ctx b1 b2; Hom (t1, a, c)
+  | App (f, x)    -> checkAp ctx f x
+  | Hom (t, a, b) -> let c = check ctx t in ignore (extUniv c);
+                     eqNf ctx t (infer ctx a); eqNf ctx t (infer ctx b);
+                     U (extUniv c)
+  | Eps (x, t, e) -> ignore (extUniv (check ctx t)); checkProp (upVar ctx x t) e; t
 
-let extImpl = function
-  | Impl (a, b) -> (a, b)
-  | e           -> raise (ExpectedImpl e)
+and checkAp ctx f x = match check ctx f, check ctx x with
+  | Hom (U _, c1, c2), Hom (c, a, b) when conv ctx c c1 -> Hom (c2, evalApp ctx f a, evalApp ctx f b)
+  | Hom (U _, c1, c2), c                                -> eqNf ctx c c1; c2
+  | t,                 _                                -> raise (ExpectedUniv t)
 
-let extForall = function
-  | Forall c -> c
-  | e        -> raise (ExpectedForall e)
+and checkProp ctx = function
+  | True          -> ()
+  | False         -> ()
+  | And (a, b)    -> checkProp2 ctx a b
+  | Or (a, b)     -> checkProp2 ctx a b
+  | Impl (a, b)   -> checkProp2 ctx a b
+  | Eq (t1, t2)   -> eqNf ctx (check ctx t1) (check ctx t2)
+  | Forall c      -> checkClos ctx c
+  | Exists c      -> checkClos ctx c
 
-let extExists = function
-  | Exists c -> c
-  | e        -> raise (ExpectedExists e)
+and checkProp2 ctx e1 e2 =
+  checkProp ctx e1; checkProp ctx e2
 
-let extEq = function
-  | Eq (t1, t2) -> (t1, t2)
-  | e           -> raise (ExpectedEq e)
+and checkClos ctx (x, t, e) =
+  ignore (extUniv (check ctx t)); checkProp (upVar ctx x t) e
 
 let get ctx x =
   match Env.find_opt x ctx.proof with

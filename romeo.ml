@@ -1,5 +1,4 @@
 open Module
-open Deriv
 
 type cmdline =
   | Check of string

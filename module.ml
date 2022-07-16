@@ -1,5 +1,7 @@
 open Parser
+open Check
 open Ident
+open Eval
 
 let ctx = ref Env.empty
 
@@ -9,9 +11,9 @@ let elab stx = Term.salt Env.empty (expandTerm (unpack stx))
 
 let perform = function
   | Def (e1, e2)      -> Printf.printf "%s & %s\n" (showSExp e1) (showSExp (unpack e2))
-  | Postulate (is, e) -> let t = elab e in ignore (Term.extUniv (Term.check !ctx t)); List.iter (fun i -> upGlobal (ident i) t) is
-  | Infer e           -> print_endline (Pp.showTerm (Term.check !ctx (elab e)))
-  | Eval e            -> let t = elab e in ignore (Term.check !ctx t); print_endline (Pp.showTerm (Term.eval !ctx t))
+  | Postulate (is, e) -> let t = elab e in ignore (Term.extUniv (check !ctx t)); List.iter (fun i -> upGlobal (ident i) t) is
+  | Infer e           -> print_endline (Pp.showTerm (check !ctx (elab e)))
+  | Eval e            -> let t = elab e in ignore (check !ctx t); print_endline (Pp.showTerm (eval !ctx t))
   | Comment _         -> ()
   | Eof               -> ()
 
