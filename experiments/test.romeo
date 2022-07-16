@@ -33,3 +33,8 @@ postulate g : Hom A y z
 
 postulate ρ : Hom U (Hom A x z) A
 #eval ρ (g ∘ f)
+
+postulate ρ′ : Hom U (Hom A x x) A
+
+#eval ρ′ (id x)
+#eval ρ′ (id (id x))

@@ -119,7 +119,7 @@ and com f g = match f, g with
 and evalApp ctx f x = let (_, c1, _) = extHom (infer ctx f) in match f, x, infer ctx x with
   | Com (g, f), _,          _                                  -> evalApp ctx g (evalApp ctx f x)
   | _,          Com (x, y), Hom (c2, _, _) when conv ctx c1 c2 -> com (evalApp ctx f x) (evalApp ctx f y)
-  | _,          Id x,       _                                  -> Id (evalApp ctx f x)
+  | _,          Id x,       Hom (c2, _, _) when conv ctx c1 c2 -> Id (evalApp ctx f x)
   | _,          _,          _                                  -> App (f, x)
 
 and evalProp ctx = function
