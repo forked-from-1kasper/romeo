@@ -57,25 +57,25 @@ let get ctx x =
   | None   -> raise (VariableNotFound x)
   | Some t -> t
 
-let coincide e1 e2 = if not (convProp e1 e2) then raise (IneqProp (e1, e2))
+let coincide ctx e1 e2 = if not (convProp ctx.term e1 e2) then raise (IneqProp (e1, e2))
 
 let rec ensure ctx e t = match e, t with
-  | PVar x, _ -> coincide (get ctx x) t
+  | PVar x, _ -> coincide ctx (get ctx x) t
   | Absurd u, _ -> ensure ctx u False
   | Conj (u1, u2), And (t1, t2) -> ensure ctx u1 t1; ensure ctx u2 t2
-  | Fst x, b -> let (a, _) = extAnd (get ctx x) in coincide a b
-  | Snd x, b -> let (_, a) = extAnd (get ctx x) in coincide a b
+  | Fst x, b -> let (a, _) = extAnd (get ctx x) in coincide ctx a b
+  | Snd x, b -> let (_, a) = extAnd (get ctx x) in coincide ctx a b
   | Left u, Or (t, _) -> ensure ctx u t
   | Right u, Or (_, t) -> ensure ctx u t
   | Disj (u1, u2), Impl (Or (a, b), c) -> ensure ctx u1 (Impl (a, c)); ensure ctx u2 (Impl (b, c))
   | Lam (x, u), Impl (a, b) -> ensure { ctx with proof = Env.add x a ctx.proof } u b
-  | Lam (x, u), Forall (y, t, i) -> ensure { ctx with term = upVar ctx.term x t } u (substProp y (Var x) i)
-  | Mp (x, e), c -> let (a, b) = extImpl (get ctx x) in ensure ctx e a; coincide b c
-  | Inst (x, e), i1 -> let (y, t, i2) = extForall (get ctx x) in eqNf (check ctx.term e) t; coincide (substProp y (eval ctx.term e) i1) i2
-  | Exis (e, u), Exists (x, t, i) -> eqNf (check ctx.term e) t; ensure ctx u (substProp x (eval ctx.term e) i)
-  | Refl t0, Eq (t1, t2) -> let t = eval ctx.term t0 in eqNf t t1; eqNf t t2
+  | Lam (x, u), Forall (y, t, i) -> ensure { ctx with term = upVar ctx.term x t } u (substProp ctx.term y (Var x) i)
+  | Mp (x, e), c -> let (a, b) = extImpl (get ctx x) in ensure ctx e a; coincide ctx b c
+  | Inst (x, e), i1 -> let (y, t, i2) = extForall (get ctx x) in eqNf ctx.term (check ctx.term e) t; coincide ctx (substProp ctx.term y (eval ctx.term e) i1) i2
+  | Exis (e, u), Exists (x, t, i) -> eqNf ctx.term (check ctx.term e) t; ensure ctx u (substProp ctx.term x (eval ctx.term e) i)
+  | Refl t0, Eq (t1, t2) -> let t = eval ctx.term t0 in eqNf ctx.term t t1; eqNf ctx.term t t2
   | Symm u, Eq (t1, t2) -> ensure ctx u (Eq (t2, t1))
-  | Trans (x, y), Eq (t1, t2) -> let (a, b1) = extEq (get ctx x) in let (b2, c) = extEq (get ctx y) in eqNf b1 b2; eqNf a t1; eqNf c t2
-  | Subst (x, e, p, u), i -> let (a, b) = extEq (get ctx p) in ensure ctx u (substProp x a e); coincide (substProp x b e) i
-  | Choice p, i2 -> let (x, t, i1) = extExists (get ctx p) in coincide (substProp x (Eps (x, t, i1)) i1) i2
+  | Trans (x, y), Eq (t1, t2) -> let (a, b1) = extEq (get ctx x) in let (b2, c) = extEq (get ctx y) in eqNf ctx.term b1 b2; eqNf ctx.term a t1; eqNf ctx.term c t2
+  | Subst (x, e, p, u), i -> let (a, b) = extEq (get ctx p) in ensure ctx u (substProp ctx.term x a e); coincide ctx (substProp ctx.term x b e) i
+  | Choice p, i2 -> let (x, t, i1) = extExists (get ctx p) in coincide ctx (substProp ctx.term x (Eps (x, t, i1)) i1) i2
   | _, _ -> raise (CheckError (e, t))

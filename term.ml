@@ -94,19 +94,22 @@ let rec infer ctx = function
 and inferAp ctx f x =
   let (_, _, c) = extHom (infer ctx f) in
   match infer ctx x with
-  | Hom (_, a, b) -> Hom (c, App (f, a), App (f, b))
+  | Hom (_, a, b) -> Hom (c, evalApp f a, evalApp f b)
   | _             -> c
 
-let rec eval ctx = function
+and eval ctx = function
   | U n           -> U n
   | Var x         -> Var x
-  | Dom g         -> let (_, t, _) = extHom (infer ctx g) in t
-  | Cod g         -> let (_, _, t) = extHom (infer ctx g) in t
+  | Dom g         -> dom ctx g
+  | Cod g         -> cod ctx g
   | Id x          -> Id (eval ctx x)
   | Com (f, g)    -> com (eval ctx f) (eval ctx g)
   | App (f, x)    -> evalApp (eval ctx f) (eval ctx x)
   | Hom (t, a, b) -> Hom (eval ctx t, eval ctx a, eval ctx b)
   | Eps (x, t, e) -> let t' = eval ctx t in Eps (x, t', evalProp (upVar ctx x t') e)
+
+and dom ctx g = let (_, t, _) = extHom (infer ctx g) in t
+and cod ctx g = let (_, _, t) = extHom (infer ctx g) in t
 
 and com f g = match f, g with
   | Com (g, h), f -> com g (com h f)
@@ -130,58 +133,58 @@ and evalProp ctx = function
   | Forall (x, t, e) -> let t' = eval ctx t in Forall (x, t', evalProp (upVar ctx x t') e)
   | Exists (x, t, e) -> let t' = eval ctx t in Exists (x, t', evalProp (upVar ctx x t') e)
 
-let rec subst x e = function
+let rec subst ctx x e = function
   | U n           -> U n
   | Var y         -> if x = y then e else Var y
-  | Dom g         -> Dom (subst x e g)
-  | Cod g         -> Cod (subst x e g)
-  | Id a          -> Id (subst x e a)
-  | App (f, a)    -> App (subst x e f, subst x e a)
-  | Com (f, g)    -> Com (subst x e f, subst x e g)
-  | Hom (t, a, b) -> Hom (subst x e t, subst x e a, subst x e b)
-  | Eps c         -> substClos eps x e c
+  | Dom g         -> dom ctx (subst ctx x e g)
+  | Cod g         -> cod ctx (subst ctx x e g)
+  | Id a          -> Id (subst ctx x e a)
+  | App (f, a)    -> evalApp (subst ctx x e f) (subst ctx x e a)
+  | Com (f, g)    -> com (subst ctx x e f) (subst ctx x e g)
+  | Hom (t, a, b) -> Hom (subst ctx x e t, subst ctx x e a, subst ctx x e b)
+  | Eps c         -> substClos eps ctx x e c
 
-and substProp x e = function
+and substProp ctx x e = function
   | True          -> True
   | False         -> False
-  | And (a, b)    -> And (substProp x e a, substProp x e b)
-  | Or (a, b)     -> Or (substProp x e a, substProp x e b)
-  | Impl (a, b)   -> Impl (substProp x e a, substProp x e b)
-  | Eq (t1, t2)   -> Eq (subst x e t1, subst x e t2)
-  | Forall c      -> substClos forall x e c
-  | Exists c      -> substClos exists x e c
+  | And (a, b)    -> And  (substProp ctx x e a, substProp ctx x e b)
+  | Or (a, b)     -> Or   (substProp ctx x e a, substProp ctx x e b)
+  | Impl (a, b)   -> Impl (substProp ctx x e a, substProp ctx x e b)
+  | Eq (t1, t2)   -> Eq (subst ctx x e t1, subst ctx x e t2)
+  | Forall c      -> substClos forall ctx x e c
+  | Exists c      -> substClos exists ctx x e c
 
-and substClos : 't. (clos -> 't) -> ident -> term -> clos -> 't =
-  fun ctor x e (y, t, i) -> if x = y then ctor (y, t, i)
-    else ctor (y, subst x e t, substProp x e i)
+and substClos : 't. (clos -> 't) -> term Env.t -> ident -> term -> clos -> 't =
+  fun ctor ctx x e (y, t, i) -> if x = y then ctor (y, t, i)
+    else ctor (y, subst ctx x e t, substProp ctx x e i)
 
-let rec conv t1 t2 = match t1, t2 with
+let rec conv ctx t1 t2 = match t1, t2 with
   | U n,              U m              -> n = m
   | Var x,            Var y            -> x = y
-  | Dom f,            Dom g            -> conv f g
-  | Cod f,            Cod g            -> conv f g
-  | Id x,             Id y             -> conv x y
-  | Com (f1, g1),     Com (f2, g2)     -> conv f1 f2 && conv g1 g2
-  | App (f1, x1),     App (f2, x2)     -> conv f1 f2 && conv x1 x2
-  | Hom (t1, a1, b1), Hom (t2, a2, b2) -> conv t1 t2 && conv a1 a2 && conv b1 b2
-  | Eps c1,           Eps c2           -> convClos c1 c2
+  | Dom f,            Dom g            -> conv ctx f g
+  | Cod f,            Cod g            -> conv ctx f g
+  | Id x,             Id y             -> conv ctx x y
+  | Com (f1, g1),     Com (f2, g2)     -> conv ctx f1 f2 && conv ctx g1 g2
+  | App (f1, x1),     App (f2, x2)     -> conv ctx f1 f2 && conv ctx x1 x2
+  | Hom (t1, a1, b1), Hom (t2, a2, b2) -> conv ctx t1 t2 && conv ctx a1 a2 && conv ctx b1 b2
+  | Eps c1,           Eps c2           -> convClos ctx c1 c2
   | _,                _                -> false
 
-and convProp e1 e2 = match e1, e2 with
+and convProp ctx e1 e2 = match e1, e2 with
   | True,             True             -> true
   | False,            False            -> true
-  | And (a1, b1),     And (a2, b2)     -> convProp a1 a2 && convProp b1 b2
-  | Or (a1, b1),      Or (a2, b2)      -> convProp a1 a2 && convProp b1 b2
-  | Impl (a1, b1),    Impl (a2, b2)    -> convProp a1 a2 && convProp b1 b2
-  | Eq (a1, b1),      Eq (a2, b2)      -> conv a1 a2 && conv b1 b2
-  | Forall c1,        Forall c2        -> convClos c1 c2
-  | Exists c1,        Exists c2        -> convClos c1 c2
+  | And (a1, b1),     And (a2, b2)     -> convProp ctx a1 a2 && convProp ctx b1 b2
+  | Or (a1, b1),      Or (a2, b2)      -> convProp ctx a1 a2 && convProp ctx b1 b2
+  | Impl (a1, b1),    Impl (a2, b2)    -> convProp ctx a1 a2 && convProp ctx b1 b2
+  | Eq (a1, b1),      Eq (a2, b2)      -> conv ctx a1 a2 && conv ctx b1 b2
+  | Forall c1,        Forall c2        -> convClos ctx c1 c2
+  | Exists c1,        Exists c2        -> convClos ctx c1 c2
   | _,                _                -> false
 
-and convClos (x, t1, i1) (y, t2, i2) = conv t1 t2 &&
-  let c = freshTerm "σ" in convProp (substProp x c i1) (substProp y c i2)
+and convClos ctx (x, t1, i1) (y, t2, i2) = conv ctx t1 t2 &&
+  let c = freshTerm "σ" in convProp ctx (substProp ctx x c i1) (substProp ctx y c i2)
 
-let eqNf t1 t2 = if not (conv t1 t2) then raise (Ineq (t1, t2))
+let eqNf ctx t1 t2 = if not (conv ctx t1 t2) then raise (Ineq (t1, t2))
 
 let rec check ctx = function
   | U n           -> U (Succ n)
@@ -190,17 +193,17 @@ let rec check ctx = function
   | Id x          -> Hom (check ctx x, x, x)
   | Com (g, f)    -> let (t1, b1, c) = extHom (check ctx g) in
                      let (t2, a, b2) = extHom (check ctx f) in
-                     eqNf t1 t2; eqNf b1 b2; Hom (t1, a, c)
+                     eqNf ctx t1 t2; eqNf ctx b1 b2; Hom (t1, a, c)
   | App (f, x)    -> checkAp ctx f x
   | Hom (t, a, b) -> let c = check ctx t in ignore (extUniv c);
-                     eqNf t (infer ctx a); eqNf t (infer ctx b);
+                     eqNf ctx t (infer ctx a); eqNf ctx t (infer ctx b);
                      U (extUniv c)
   | Eps (x, t, e) -> ignore (extUniv (check ctx t)); checkProp (upVar ctx x t) e; t
 
 and checkAp ctx f x =
   match check ctx f, check ctx x with
-  | Hom (U _, c1, c2), Hom (c, a, b) -> eqNf c c1; Hom (c2, App (f, a), App (f, b))
-  | Hom (U _, c1, c2), c             -> eqNf c c1; c2
+  | Hom (U _, c1, c2), Hom (c, a, b) -> eqNf ctx c c1; Hom (c2, evalApp f a, evalApp f b)
+  | Hom (U _, c1, c2), c             -> eqNf ctx c c1; c2
   | t,                 _             -> raise (ExpectedUniv t)
 
 and checkProp ctx = function
@@ -209,7 +212,7 @@ and checkProp ctx = function
   | And (a, b)    -> checkProp2 ctx a b
   | Or (a, b)     -> checkProp2 ctx a b
   | Impl (a, b)   -> checkProp2 ctx a b
-  | Eq (t1, t2)   -> eqNf (check ctx t1) (check ctx t2)
+  | Eq (t1, t2)   -> eqNf ctx (check ctx t1) (check ctx t2)
   | Forall c      -> checkClos ctx c
   | Exists c      -> checkClos ctx c
 

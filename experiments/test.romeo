@@ -19,12 +19,14 @@ A × A
 
 #eval U₃
 
-postulate f : Hom U A B
-postulate g : Hom U B C
-postulate h : Hom U C D
+postulate F : Hom U A B
+postulate G : Hom U B C
+postulate H : Hom U C D
 
-#eval (h ∘ g) ∘ id B ∘ (f ∘ id A)
+#eval (H ∘ G) ∘ id B ∘ (F ∘ id A)
 
-postulate x : A
+postulate x y z : A
+postulate f : Hom A x y
+postulate g : Hom A y z
 
-#eval (g ∘ f) x
+#infer (G ∘ F) (g ∘ f)
