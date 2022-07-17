@@ -44,3 +44,5 @@ postulate ρ′ : Hom U (Hom A x x) A
 
 lemma lem1 : ∀ (f : Hom A x x), f = f :=
 λ f, refl f
+
+axiom ax1 : ∃ (g : Hom A x x), g = g ∘ g

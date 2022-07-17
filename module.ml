@@ -24,7 +24,8 @@ let perform = function
   | Postulate (is, e)   -> let t = elab e in ignore (Term.extUniv (check !ctx.term t)); List.iter (fun i -> upGlobal (ident i) t) is
   | Infer e             -> print_endline (Pp.showTerm (check !ctx.term (elab e)))
   | Eval e              -> let t = elab e in ignore (check !ctx.term t); print_endline (Pp.showTerm (eval !ctx.term t))
-  | Theorem (i, e0, p0) -> let e = elabProp e0 in let p = elabProof p0 in ensure !ctx p e; upThm (ident i) e
+  | Theorem (i, e0, p0) -> let e = elabProp e0 in let p = elabProof p0 in checkProp !ctx.term e; ensure !ctx p e; upThm (ident i) e
+  | Axiom (i, e0)       -> let e = elabProp e0 in checkProp !ctx.term e; upThm (ident i) e
   | Comment _           -> ()
   | Eof                 -> ()
 
