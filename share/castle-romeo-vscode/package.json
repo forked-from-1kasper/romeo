@@ -1,0 +1,31 @@
+{
+    "name": "castle-romeo",
+    "displayName": "Castle Romeo",
+    "version": "0.0.0",
+    "description": "Castle Romeo theorem prover syntax highlighting for Visual Studio Code",
+    "publisher": "siegmentationfault",
+    "categories": [
+        "Programming Languages"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/forked-from-1kasper/castle_romeo"
+    },
+    "engines": {
+        "vscode": "^0.10.10"
+    },
+    "contributes": {
+        "languages": [{
+            "id": "castle-romeo",
+            "extensions": [
+                ".romeo"
+            ],
+            "configuration": "./castle-romeo-configuration.json"
+        }],
+        "grammars": [{
+                "language": "castle-romeo",
+                "scopeName": "source.castle-romeo",
+                "path": "./syntaxes/castle-romeo.tmLanguage.json"
+        }]
+    }
+}

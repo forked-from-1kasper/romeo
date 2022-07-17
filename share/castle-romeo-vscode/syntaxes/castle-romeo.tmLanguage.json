@@ -1,0 +1,25 @@
+{
+    "name": "castle-romeo",
+    "fileTypes": [
+        "romeo"
+    ],
+    "patterns": [
+        {
+            "match": ";.*$",
+            "name": "comment.line.double-dash.castle-romeo"
+        },
+        {
+            "match": "(?<=^|[\\s()])(postulate|definition|#eval|#infer)(?=$|[\\s()])",
+            "name": "keyword.other.castle-romeo"
+        },
+        {
+            "match": "(?<=^|[\\s(),])(∀|∃|cod|dom|id|Hom)(?=$|[\\s(),])",
+            "name": "keyword.control.castle-romeo"
+        },
+        {
+            "match": "(?<=^|[\\s(),])(∘|[U][₀₁₂₃₄₅₆₇₈₉]*)(?=$|[\\s(),])",
+            "name": "keyword.other.castle-romeo"
+        }
+    ],
+    "scopeName": "source.castle-romeo"
+}
