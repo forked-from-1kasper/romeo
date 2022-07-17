@@ -138,15 +138,15 @@ let expandVar x =
   | Error _   -> Var (Ident.ident x)
 
 let rec expandTerm = function
-  | Atom x                                    -> expandVar x
-  | Node [Atom "cod"; x]                      -> Cod (expandTerm x)
-  | Node [Atom "dom"; x]                      -> Dom (expandTerm x)
-  | Node [Atom "id"; x]                       -> Id  (expandTerm x)
-  | Node [f; Atom "∘"; g]                     -> Com (expandTerm f, expandTerm g)
-  | Node [Atom "Hom"; t; a; b]                -> Hom (expandTerm t, expandTerm a, expandTerm b)
-  | Node [Node [Atom "ε"; b]; Atom ","; e]    -> let (i, t) = expandBinder b in Eps (i, t, expandProp e)
-  | Node (f :: xs)                            -> List.fold_left Term.app (expandTerm f) (List.map expandTerm xs)
-  | e                                         -> raise (InvalidSyntax e)
+  | Atom x                                     -> expandVar x
+  | Node [Atom "cod"; x]                       -> Cod (expandTerm x)
+  | Node [Atom "dom"; x]                       -> Dom (expandTerm x)
+  | Node [Atom "id"; x]                        -> Id  (expandTerm x)
+  | Node [f; Atom "∘"; g]                      -> Com (expandTerm f, expandTerm g)
+  | Node [Atom "Hom"; t; a; b]                 -> Hom (expandTerm t, expandTerm a, expandTerm b)
+  | Node [Node [Atom "ε"; b]; Atom ","; e]     -> let (i, t) = expandBinder b in Eps (i, t, expandProp e)
+  | Node (f :: xs)                             -> List.fold_left Term.app (expandTerm f) (List.map expandTerm xs)
+  | e                                          -> raise (InvalidSyntax e)
 and expandProp = function
   | Atom "⊤"                                   -> True
   | Atom "⊥"                                   -> False
@@ -159,9 +159,9 @@ and expandProp = function
   | Node [Node (Atom "∃!" :: bs); Atom ","; e] -> expandBinders exuniq bs e
   | e                                          -> raise (InvalidSyntax e)
 and expandBinder = function
-  | Node [Atom i; Atom ":"; t]      -> (Ident.ident i, expandTerm t)
-  | Node (Atom i :: Atom ":" :: ts) -> (Ident.ident i, expandTerm (Node ts))
-  | e                               -> raise (InvalidSyntax e)
+  | Node [Atom i; Atom ":"; t]                 -> (Ident.ident i, expandTerm t)
+  | Node (Atom i :: Atom ":" :: ts)            -> (Ident.ident i, expandTerm (Node ts))
+  | e                                          -> raise (InvalidSyntax e)
 and expandBinders c bs e =
   List.fold_right (fun b e0 -> let (i, t) = expandBinder b in c (i, t, e0)) bs (expandProp e)
 
