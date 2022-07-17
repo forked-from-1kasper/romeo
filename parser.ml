@@ -84,8 +84,8 @@ let cmd = optional ws >> comment <|> def <|> thm <|> postulate <|> axm <|> infer
 type associativity = Left | Right | Binder
 
 let builtinInfix = [
-  ",", (1, Binder); "=", (50, Left); "∧", (20, Right);
-  "∨", (30, Right); "⊃", (40, Right); "∘", (60, Right)
+  ",", (1, Binder); "=", (50, Left); "∧", (20, Right); "∨", (30, Right);
+  "⊃", (40, Right); "⇒", (40, Right); "∘", (60, Right)
 ]
 let operators = ref (Dict.of_seq (List.to_seq builtinInfix))
 
@@ -164,6 +164,7 @@ and expandProp = function
   | Node [a; Atom "∧"; b]                      -> And  (expandProp a, expandProp b)
   | Node [a; Atom "∨"; b]                      -> Or   (expandProp a, expandProp b)
   | Node [a; Atom "⊃"; b]                      -> Impl (expandProp a, expandProp b)
+  | Node [a; Atom "⇒"; b]                     -> Impl (expandProp a, expandProp b)
   | Node [t1; Atom "="; t2]                    -> Eq   (expandTerm t1, expandTerm t2)
   | Node [Node (Atom "∀"  :: bs); Atom ","; e] -> expandBinders forall bs e
   | Node [Node (Atom "∃"  :: bs); Atom ","; e] -> expandBinders exists bs e

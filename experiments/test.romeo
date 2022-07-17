@@ -9,7 +9,7 @@ definition test′ X Y :=
 ∀ (x : X) (y : Y), ∃ (f : Hom U X Y), f x = y
 
 definition test″ :=
-∀ (C : U), C = C ⊃ C = C ⊃ C = C ⊃ C = C
+∀ (C : U), C = C ⇒ C = C ⊃ C = C ⊃ C = C
 
 definition diag A :=
 A × A
