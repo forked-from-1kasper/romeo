@@ -46,6 +46,7 @@ exception ExpectedAnd    of prop
 exception ExpectedImpl   of prop
 exception ExpectedForall of prop
 exception ExpectedExists of prop
+exception ExpectedExUniq of prop
 exception ExpectedEq     of prop
 
 type ctx = term Env.t
@@ -81,6 +82,10 @@ let extExists = function
   | Exists c -> c
   | e        -> raise (ExpectedExists e)
 
+let extExUniq = function
+  | ExUniq c -> c
+  | e        -> raise (ExpectedExUniq e)
+
 let extEq = function
   | Eq (t1, t2) -> (t1, t2)
   | e           -> raise (ExpectedEq e)
@@ -107,48 +112,54 @@ and saltProp ns = function
   | Eq (t1, t2)      -> Eq (salt ns t1, salt ns t2)
   | Forall (x, t, e) -> let y = fresh x in Forall (y, salt ns t, saltProp (Env.add x y ns) e)
   | Exists (x, t, e) -> let y = fresh x in Exists (y, salt ns t, saltProp (Env.add x y ns) e)
-  | ExUniq (x, t, e) -> let y = fresh x in Exists (y, salt ns t, saltProp (Env.add x y ns) e)
+  | ExUniq (x, t, e) -> let y = fresh x in ExUniq (y, salt ns t, saltProp (Env.add x y ns) e)
 
 type proof =
   | Hole
-  | PVar   of ident
-  | Have   of ident * prop * proof * proof
-  | Absurd of proof                                          (* ⊥ ⊢ A *)
-  | Conj   of proof * proof                           (* A, B ⊢ A ∧ B *)
-  | Fst    of ident                                      (* A ∧ B ⊢ A *)
-  | Snd    of ident                                      (* A ∧ B ⊢ B *)
-  | Left   of proof                                      (* A ⊢ A ∨ B *)
-  | Right  of proof                                      (* B ⊢ A ∨ B *)
-  | Disj   of proof * proof               (* A → C, B → C ⊢ A ∨ B → C *)
-  | Lam    of ident * proof                        (* (A ⊢ B) ⊢ A → B *)
-  | Mp     of ident * proof list                      (* A → B, A ⊢ B *)
-  | Inst   of ident * term list        (* ∀ (y : A), B y; x : A ⊢ B x *)
-  | Exis   of term * proof                   (* x : A, P x ⊢ ∃ y, P y *)
-  | Refl   of term                                           (* a = a *)
-  | Symm   of proof                                  (* a = b ⊢ b = a *)
-  | Trans  of ident * ident                   (* a = b, b = c ⊢ a = c *)
-  | Subst  of ident * prop * ident * proof      (* a = b, P(a) ⊢ P(b) *)
-  | Choice of ident                     (* H : ∃ x, P x ⊢ P(ε x, P x) *)
+  | PVar     of ident
+  | Have     of ident * prop * proof * proof
+  | Absurd   of proof                                          (* ⊥ ⊢ A *)
+  | Conj     of proof * proof                           (* A, B ⊢ A ∧ B *)
+  | Fst      of ident                                      (* A ∧ B ⊢ A *)
+  | Snd      of ident                                      (* A ∧ B ⊢ B *)
+  | Left     of proof                                      (* A ⊢ A ∨ B *)
+  | Right    of proof                                      (* B ⊢ A ∨ B *)
+  | Disj     of proof * proof               (* A → C, B → C ⊢ A ∨ B → C *)
+  | Lam      of ident * proof                        (* (A ⊢ B) ⊢ A → B *)
+  | Mp       of ident * proof list                      (* A → B, A ⊢ B *)
+  | Inst     of ident * term list        (* ∀ (y : A), B y; x : A ⊢ B x *)
+  | Exis     of term * proof                   (* x : A, P x ⊢ ∃ y, P y *)
+  | Refl     of term                                           (* a = a *)
+  | Symm     of proof                                  (* a = b ⊢ b = a *)
+  | Trans    of ident * ident                   (* a = b, b = c ⊢ a = c *)
+  | Subst    of ident * prop * ident * proof      (* a = b, P(a) ⊢ P(b) *)
+  | Choice   of ident                     (* H : ∃ x, P x ⊢ P(ε x, P x) *)
+  | ExisUniq of term * proof * proof
+  | Uniq     of ident * proof * proof
+  | Proj     of proof
 
 exception CheckError of proof * prop
 
 let rec saltProof ns = function
-  | Hole                -> Hole
-  | PVar x              -> PVar (freshVar ns x)
-  | Have (x, t, e1, e2) -> let y = fresh x in Have (y, saltProp ns t, saltProof ns e1, saltProof (Env.add x y ns) e2)
-  | Absurd e            -> Absurd (saltProof ns e)
-  | Conj (e1, e2)       -> Conj (saltProof ns e1, saltProof ns e2)
-  | Fst x               -> Fst (freshVar ns x)
-  | Snd x               -> Snd (freshVar ns x)
-  | Left e              -> Left (saltProof ns e)
-  | Right e             -> Right (saltProof ns e)
-  | Disj (e1, e2)       -> Disj (saltProof ns e1, saltProof ns e2)
-  | Lam (x, e)          -> let y = fresh x in Lam (y, saltProof (Env.add x y ns) e)
-  | Mp (x, es)          -> Mp (freshVar ns x, List.map (saltProof ns) es)
-  | Inst (x, ts)        -> Inst (freshVar ns x, List.map (salt ns) ts)
-  | Exis (t, e)         -> Exis (salt ns t, saltProof ns e)
-  | Refl t              -> Refl (salt ns t)
-  | Symm e              -> Symm (saltProof ns e)
-  | Trans (x, y)        -> Trans (freshVar ns x, freshVar ns y)
-  | Subst (x, e, p, u)  -> let y = fresh x in Subst (y, saltProp (Env.add x y ns) e, freshVar ns p, saltProof ns u)
-  | Choice x            -> Choice (freshVar ns x)
+  | Hole                 -> Hole
+  | PVar x               -> PVar (freshVar ns x)
+  | Have (x, t, e1, e2)  -> let y = fresh x in Have (y, saltProp ns t, saltProof ns e1, saltProof (Env.add x y ns) e2)
+  | Absurd e             -> Absurd (saltProof ns e)
+  | Conj (e1, e2)        -> Conj (saltProof ns e1, saltProof ns e2)
+  | Fst x                -> Fst (freshVar ns x)
+  | Snd x                -> Snd (freshVar ns x)
+  | Left e               -> Left (saltProof ns e)
+  | Right e              -> Right (saltProof ns e)
+  | Disj (e1, e2)        -> Disj (saltProof ns e1, saltProof ns e2)
+  | Lam (x, e)           -> let y = fresh x in Lam (y, saltProof (Env.add x y ns) e)
+  | Mp (x, es)           -> Mp (freshVar ns x, List.map (saltProof ns) es)
+  | Inst (x, ts)         -> Inst (freshVar ns x, List.map (salt ns) ts)
+  | Exis (t, e)          -> Exis (salt ns t, saltProof ns e)
+  | Refl t               -> Refl (salt ns t)
+  | Symm e               -> Symm (saltProof ns e)
+  | Trans (x, y)         -> Trans (freshVar ns x, freshVar ns y)
+  | Subst (x, e, p, u)   -> let y = fresh x in Subst (y, saltProp (Env.add x y ns) e, freshVar ns p, saltProof ns u)
+  | Choice x             -> Choice (freshVar ns x)
+  | ExisUniq (t, e1, e2) -> ExisUniq (salt ns t, saltProof ns e1, saltProof ns e2)
+  | Uniq (i, e1, e2)     -> Uniq (freshVar ns i, saltProof ns e1, saltProof ns e2)
+  | Proj x               -> Proj (saltProof ns x)

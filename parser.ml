@@ -201,6 +201,9 @@ let rec expandProof = function
   | Node [Atom "trans"; Atom x; Atom y]             -> Trans (Ident.ident x, Ident.ident y)
   | Node [Atom "subst"; Atom x; e1; Atom y; e2]     -> Subst (Ident.ident x, expandProp (unpack e1), Ident.ident y, expandProof e2)
   | Node [Atom "choice"; Atom x]                    -> Choice (Ident.ident x)
+  | Node [Atom "exisUniq"; t; e1; e2]               -> ExisUniq (expandTerm (unpack t), expandProof e1, expandProof e2)
+  | Node [Atom "uniq"; Atom i; e1; e2]              -> Uniq (Ident.ident i, expandProof e1, expandProof e2)
+  | Node [Atom "proj"; x]                           -> Proj (expandProof x)
   | Node (Atom "inst" :: Atom x :: ts)              -> Inst (Ident.ident x, List.map (expandTerm % unpack) ts)
   | Node (Atom x :: y :: ys)                        -> Mp (Ident.ident x, List.map expandProof (y :: ys))
   | Node [e]                                        -> expandProof e

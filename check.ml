@@ -72,4 +72,13 @@ let rec ensure ctx e t = match e, t with
   | Trans (x, y),         Eq (t1, t2)         -> let (a, b1) = extEq (get ctx x) in let (b2, c) = extEq (get ctx y) in eqNf ctx.term b1 b2; eqNf ctx.term a t1; eqNf ctx.term c t2
   | Subst (x, e, p, u),   i                   -> let (a, b) = extEq (get ctx p) in ensure ctx u (substProp ctx.term x a e); coincide ctx (substProp ctx.term x b e) i
   | Choice p,             i2                  -> let (x, t, i1) = extExists (get ctx p) in coincide ctx (substProp ctx.term x (Eps (x, t, i1)) i1) i2
-  | _,                    _                   -> raise (CheckError (e, t))
+  | Proj u,               Exists (x, t, i)    -> ensure ctx u (ExUniq (x, t, i))
+  | ExisUniq (e, u1, u2), ExUniq (x, t, i)    -> eqNf ctx.term (check ctx.term e) t; ensure ctx u1 (substProp ctx.term x (eval ctx.term e) i);
+                                                 let y = freshName "σ" in let ctx' = upVar ctx.term y t in
+                                                 ensure ctx u2 (Forall (y, t, Impl (substProp ctx' x (Var y) i, Eq (e, Var y))))
+  | Uniq (i, e1, e2),     Eq (t1, t2)         -> let (x, t, e) = extExUniq (get ctx i) in
+                                                 eqNf ctx.term (check ctx.term t1) t;
+                                                 eqNf ctx.term (check ctx.term t2) t;
+                                                 ensure ctx e1 (substProp ctx.term x t1 e);
+                                                 ensure ctx e2 (substProp ctx.term x t2 e)
+  | _,                        _               -> raise (CheckError (e, t))

@@ -40,28 +40,31 @@ and showProp e = ppProp false e
 
 let rec ppProof paren e =
   let s = match e with
-  | Hole                -> "?"
-  | PVar x              -> showIdent x
-  | Absurd e            -> "absurd " ^ ppProof true e
-  | Have (x, t, e1, e2) -> Printf.sprintf "let %s : %s => %s in %s" (showIdent x) (showProp t) (showProof e1) (showProof e2)
-  | Conj (e1, e2)       -> Printf.sprintf "conj %s %s" (ppProof true e1) (ppProof true e2)
-  | Fst x               -> "fst " ^ showIdent x
-  | Snd x               -> "snd " ^ showIdent x
-  | Left e              -> "left " ^ ppProof true e
-  | Right e             -> "right " ^ ppProof true e
-  | Disj (e1, e2)       -> Printf.sprintf "disj %s %s" (ppProof true e1) (ppProof true e2)
-  | Lam (x, e)          -> Printf.sprintf "λ %s, %s" (showIdent x) (showProof e)
-  | Mp (x, es)          -> Printf.sprintf "%s %s" (showIdent x) (String.concat " " (List.map (ppProof true) es))
-  | Inst (x, ts)        -> Printf.sprintf "inst %s %s" (showIdent x) (String.concat " " (List.map (ppTerm true) ts))
-  | Exis (t, e)         -> Printf.sprintf "exis %s %s" (ppTerm true t) (ppProof true e)
-  | Refl t              -> "refl " ^ ppTerm true t
-  | Symm e              -> "symm " ^ ppProof true e
-  | Trans (x, y)        -> Printf.sprintf "trans %s %s" (showIdent x) (showIdent y)
-  | Subst (x, e, p, u)  -> Printf.sprintf "subst %s %s %s %s" (showIdent x) (ppProp true e) (showIdent p) (ppProof true u)
-  | Choice x            -> "choice " ^ showIdent x
+  | Hole                 -> "?"
+  | PVar x               -> showIdent x
+  | Absurd e             -> "absurd " ^ ppProof true e
+  | Have (x, t, e1, e2)  -> Printf.sprintf "let %s : %s => %s in %s" (showIdent x) (showProp t) (showProof e1) (showProof e2)
+  | Conj (e1, e2)        -> Printf.sprintf "conj %s %s" (ppProof true e1) (ppProof true e2)
+  | Fst x                -> "fst " ^ showIdent x
+  | Snd x                -> "snd " ^ showIdent x
+  | Left e               -> "left " ^ ppProof true e
+  | Right e              -> "right " ^ ppProof true e
+  | Disj (e1, e2)        -> Printf.sprintf "disj %s %s" (ppProof true e1) (ppProof true e2)
+  | Lam (x, e)           -> Printf.sprintf "λ %s, %s" (showIdent x) (showProof e)
+  | Mp (x, es)           -> Printf.sprintf "%s %s" (showIdent x) (String.concat " " (List.map (ppProof true) es))
+  | Inst (x, ts)         -> Printf.sprintf "inst %s %s" (showIdent x) (String.concat " " (List.map (ppTerm true) ts))
+  | Exis (t, e)          -> Printf.sprintf "exis %s %s" (ppTerm true t) (ppProof true e)
+  | Refl t               -> "refl " ^ ppTerm true t
+  | Symm e               -> "symm " ^ ppProof true e
+  | Trans (x, y)         -> Printf.sprintf "trans %s %s" (showIdent x) (showIdent y)
+  | Subst (x, e, p, u)   -> Printf.sprintf "subst %s %s %s %s" (showIdent x) (ppProp true e) (showIdent p) (ppProof true u)
+  | Choice x             -> "choice " ^ showIdent x
+  | ExisUniq (t, e1, e2) -> Printf.sprintf "exisUniq %s %s %s" (ppTerm true t) (ppProof true e1) (ppProof true e2)
+  | Uniq (i, e1, e2)     -> Printf.sprintf "subst %s %s %s" (showIdent i) (ppProof true e1) (ppProof true e2)
+  | Proj e               -> "proj " ^ ppProof true e
   in match e with Hole | PVar _ -> s | _ -> parens paren s
 
-and showProof e = ppProof true e
+and showProof e = ppProof false e
 
 let showError = function
   | VariableNotFound x -> Printf.sprintf "Unbound variable “%s”." (showIdent x)
