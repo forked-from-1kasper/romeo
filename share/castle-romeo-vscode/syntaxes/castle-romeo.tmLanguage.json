@@ -13,7 +13,7 @@
             "name": "keyword.other.castle-romeo"
         },
         {
-            "match": "(?<=^|[\\s(),])(∀|∃|cod|dom|id|Hom)(?=$|[\\s(),])",
+            "match": "(?<=^|[\\s(),])(ε|∀|∃|cod|dom|id|Hom)(?=$|[\\s(),])",
             "name": "keyword.control.castle-romeo"
         },
         {
