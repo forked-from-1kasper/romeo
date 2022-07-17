@@ -12,6 +12,7 @@ type command =
   | Eval      of sexp
   | Infer     of sexp
   | Postulate of string list * sexp
+  | Theorem   of string * sexp * sexp
   | Def       of sexp * sexp
   | Comment   of string
   | Eof
@@ -39,7 +40,8 @@ let digits ns = let deg = ref 1 in let m = ref 0 in
 let universe = digits <$> (ch 'U' >> many numSubscript)
 
 let ws             = str (fun c -> c = ' ' || c = '\n' || c = '\t' || c = '\t') >> Monad.eps
-let keywords       = ["definition"; "theorem"; "infix"; "keyword"; "postulate"; "#infer"; "#eval"; ":="]
+let keywords       = ["definition"; "theorem"; "lemma"; "proposition"; "infix";
+                      "keyword"; "postulate"; "#infer"; "#eval"; ":="]
 let reserved       = ['('; ')'; '\n'; '\t'; '\r'; ' '; ',']
 let isReserved   c = List.mem c reserved
 let isntReserved c = not (List.mem c reserved)
@@ -57,6 +59,11 @@ let def = token "definition" >> ws >> sexpToplevel >>=
   fun e1 -> optional ws >> token ":=" >> ws >> sexpToplevel >>=
     fun e2 -> pure (Def (e1, e2))
 
+let thm = (token "theorem" <|> token "lemma" <|> token "proposition") >> ws >> ident >>=
+  fun i -> ws >> token ":" >> ws >> sexpToplevel >>=
+    fun e1 -> token ":=" >> ws >> sexpToplevel >>=
+      fun e2 -> pure (Theorem (i, e1, e2))
+
 let debug ident fn = token ident >> ws >> sexpToplevel >>= fun e -> pure (fn e)
 
 let comment = ch ';' >> str (fun c -> c <> '\n' && c <> '\r') >>= fun s -> optional ws >> pure (Comment s)
@@ -67,7 +74,7 @@ let postulate = token "postulate" >> ws >> sepBy1 ws (guard ((<>) ":") ident) <<
 let infer = debug "#infer" (fun e -> Infer e)
 let eval  = debug "#eval"  (fun e -> Eval e)
 
-let cmd = optional ws >> comment <|> def <|> postulate <|> infer <|> eval <|> (eof >> pure Eof)
+let cmd = optional ws >> comment <|> def <|> thm <|> postulate <|> infer <|> eval <|> (eof >> pure Eof)
 
 (* second stage parser *)
 type associativity = Left | Right | Binder
@@ -178,11 +185,7 @@ let rec expandProof = function
   | Node [Atom "left"; x]                       -> Left (expandProof x)
   | Node [Atom "right"; x]                      -> Right (expandProof x)
   | Node [Atom "disj"; a; b]                    -> Disj (expandProof a, expandProof b)
-  | Node (Atom "λ" :: xs)                       -> let (is, ys) = splitWhile ((<>) (Atom ",")) xs in
-  begin match ys with
-    | []      -> raise (InvalidSyntax (Node (Atom "λ" :: xs)))
-    | _ :: es -> List.fold_right (fun i e -> Lam (i, e)) (List.map expandIdent is) (expandProof (Node es))
-  end
+  | Node [Node (Atom "λ" :: is); Atom ","; e]   -> List.fold_right (fun i e -> Lam (i, e)) (List.map expandIdent is) (expandProof e)
   | Node [Atom "exis"; t; x]                    -> Exis (expandTerm t, expandProof x)
   | Node [Atom "refl"; t]                       -> Refl (expandTerm t)
   | Node [Atom "symm"; x]                       -> Symm (expandProof x)

@@ -1,3 +1,4 @@
+open Parser
 open Ident
 open Term
 
@@ -42,4 +43,5 @@ let showError = function
   | ExpectedUniv t     -> Printf.sprintf "“%s” expected to be a universe." (showTerm t)
   | ExpectedHom t      -> Printf.sprintf "“%s” expected to be Hom." (showTerm t)
   | Ineq (t1, t2)      -> Printf.sprintf "%s\n  ≠\n%s" (showTerm t1) (showTerm t2)
+  | InvalidSyntax stx  -> Printf.sprintf "Invalid syntax:\n%s\n" (showSExp stx)
   | ex                 -> Printf.sprintf "Uncaught exception: %s" (Printexc.to_string ex)

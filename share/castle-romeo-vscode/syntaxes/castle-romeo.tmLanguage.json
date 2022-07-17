@@ -9,7 +9,7 @@
             "name": "comment.line.double-dash.castle-romeo"
         },
         {
-            "match": "(?<=^|[\\s()])(postulate|definition|#eval|#infer)(?=$|[\\s()])",
+            "match": "(?<=^|[\\s()])(postulate|definition|theorem|lemma|proposition|#eval|#infer)(?=$|[\\s()])",
             "name": "keyword.other.castle-romeo"
         },
         {
