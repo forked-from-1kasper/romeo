@@ -1,5 +1,4 @@
 open Monad
-open Check
 open Term
 
 module Dict = Map.Make(String)
@@ -42,7 +41,7 @@ let universe = digits <$> (ch 'U' >> many numSubscript)
 
 let ws             = str (fun c -> c = ' ' || c = '\n' || c = '\t' || c = '\t') >> Monad.eps
 let keywords       = ["definition"; "theorem"; "lemma"; "proposition"; "infix";
-                      "postulate"; "axiom"; "keyword";"#infer"; "#eval"; ":="]
+                      "postulate"; "axiom"; "NB"; "keyword"; "#infer"; "#eval"; ":="]
 let reserved       = ['('; ')'; '\n'; '\t'; '\r'; ' '; ',']
 let isReserved   c = List.mem c reserved
 let isntReserved c = not (List.mem c reserved)
@@ -71,7 +70,7 @@ let axm = token "axiom" >> ws >> ident >>= fun i ->
 
 let debug ident fn = token ident >> ws >> sexpToplevel >>= fun e -> pure (fn e)
 
-let comment = ch ';' >> str (fun c -> c <> '\n' && c <> '\r') >>= fun s -> optional ws >> pure (Comment s)
+let comment = token "NB" >> ws >> str (fun c -> c <> '\n' && c <> '\r') >>= fun s -> optional ws >> pure (Comment s)
 
 let postulate = token "postulate" >> ws >> sepBy1 ws (guard ((<>) ":") ident) << ws >>=
   fun is -> token ":" >> ws >> sexpToplevel >>= fun e -> pure (Postulate (is, e))
@@ -162,10 +161,10 @@ let rec expandTerm = function
 and expandProp = function
   | Atom "⊤"                                   -> True
   | Atom "⊥"                                   -> False
-  | Node [a; Atom "∧"; b]                      -> And (expandProp a, expandProp b)
-  | Node [a; Atom "∨"; b]                      -> Or  (expandProp a, expandProp b)
-  | Node [a; Atom "⊃"; b]                      -> And (expandProp a, expandProp b)
-  | Node [t1; Atom "="; t2]                    -> Eq  (expandTerm t1, expandTerm t2)
+  | Node [a; Atom "∧"; b]                      -> And  (expandProp a, expandProp b)
+  | Node [a; Atom "∨"; b]                      -> Or   (expandProp a, expandProp b)
+  | Node [a; Atom "⊃"; b]                      -> Impl (expandProp a, expandProp b)
+  | Node [t1; Atom "="; t2]                    -> Eq   (expandTerm t1, expandTerm t2)
   | Node [Node (Atom "∀"  :: bs); Atom ","; e] -> expandBinders forall bs e
   | Node [Node (Atom "∃"  :: bs); Atom ","; e] -> expandBinders exists bs e
   | Node [Node (Atom "∃!" :: bs); Atom ","; e] -> expandBinders exuniq bs e
@@ -182,22 +181,27 @@ let expandIdent = function
   | e      -> raise (ExpectedIdent e)
 
 let rec expandProof = function
-  | Atom x                                      -> PVar (Ident.ident x)
-  | Node [Atom "absurd"; x]                     -> Absurd (expandProof x)
-  | Node [Atom "conj"; a; b]                    -> Conj (expandProof a, expandProof b)
-  | Node [Atom "fst"; Atom x]                   -> Fst (Ident.ident x)
-  | Node [Atom "snd"; Atom x]                   -> Snd (Ident.ident x)
-  | Node [Atom "left"; x]                       -> Left (expandProof x)
-  | Node [Atom "right"; x]                      -> Right (expandProof x)
-  | Node [Atom "disj"; a; b]                    -> Disj (expandProof a, expandProof b)
-  | Node [Node (Atom "λ" :: is); Atom ","; e]   -> List.fold_right (fun i e -> Lam (i, e)) (List.map expandIdent is) (expandProof e)
-  | Node [Atom "exis"; t; x]                    -> Exis (expandTerm t, expandProof x)
-  | Node [Atom "refl"; t]                       -> Refl (expandTerm t)
-  | Node [Atom "symm"; x]                       -> Symm (expandProof x)
-  | Node [Atom "trans"; Atom x; Atom y]         -> Trans (Ident.ident x, Ident.ident y)
-  | Node [Atom "subst"; Atom x; e1; Atom y; e2] -> Subst (Ident.ident x, expandProp e1, Ident.ident y, expandProof e2)
-  | Node [Atom "choice"; Atom x]                -> Choice (Ident.ident x)
-  | Node (Atom "inst" :: Atom x :: ts)          -> Inst (Ident.ident x, List.map expandTerm ts)
-  | Node (Atom x :: y :: ys)                    -> Mp (Ident.ident x, List.map expandProof (y :: ys))
-  | Node [e]                                    -> expandProof e
-  | e                                           -> raise (InvalidSyntax e)
+  | Atom "?"                                        -> Hole
+  | Atom x                                          -> PVar (Ident.ident x)
+  | Node (Atom "have" :: Atom x :: Atom ":" :: es0) -> let (t, es1) = splitWhile ((<>) (Atom "=>")) es0 in
+                                                       let (e1, es2) = splitWhile ((<>) (Atom "in")) (List.tl es1) in let e2 = List.tl es2 in
+                                                       Have (Ident.ident x, expandProp (unpack (Node t)), expandProof (Node e1), expandProof (Node e2))
+  | Node [Atom "absurd"; x]                         -> Absurd (expandProof x)
+  | Node [Atom "conj"; a; b]                        -> Conj (expandProof a, expandProof b)
+  | Node [Atom "fst"; Atom x]                       -> Fst (Ident.ident x)
+  | Node [Atom "snd"; Atom x]                       -> Snd (Ident.ident x)
+  | Node [Atom "left"; x]                           -> Left (expandProof x)
+  | Node [Atom "right"; x]                          -> Right (expandProof x)
+  | Node [Atom "disj"; a; b]                        -> Disj (expandProof a, expandProof b)
+  | Node (Atom "λ" :: es0)                          -> let (is, es1) = splitWhile ((<>) (Atom ",")) es0 in let e = Node (List.tl es1) in
+                                                       List.fold_right (fun i e -> Lam (i, e)) (List.map expandIdent is) (expandProof e)
+  | Node [Atom "exis"; t; x]                        -> Exis (expandTerm (unpack t), expandProof x)
+  | Node [Atom "refl"; t]                           -> Refl (expandTerm (unpack t))
+  | Node [Atom "symm"; x]                           -> Symm (expandProof x)
+  | Node [Atom "trans"; Atom x; Atom y]             -> Trans (Ident.ident x, Ident.ident y)
+  | Node [Atom "subst"; Atom x; e1; Atom y; e2]     -> Subst (Ident.ident x, expandProp (unpack e1), Ident.ident y, expandProof e2)
+  | Node [Atom "choice"; Atom x]                    -> Choice (Ident.ident x)
+  | Node (Atom "inst" :: Atom x :: ts)              -> Inst (Ident.ident x, List.map (expandTerm % unpack) ts)
+  | Node (Atom x :: y :: ys)                        -> Mp (Ident.ident x, List.map expandProof (y :: ys))
+  | Node [e]                                        -> expandProof e
+  | e                                               -> raise (InvalidSyntax e)

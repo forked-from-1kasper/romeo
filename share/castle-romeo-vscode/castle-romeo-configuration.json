@@ -2,9 +2,6 @@
     "brackets": [
         ["(", ")"]
     ],
-    "comments": {
-        "lineComment": ";"
-    },
     "surroundingPairs": [
         ["(", ")"]
     ],

@@ -5,11 +5,7 @@
     ],
     "patterns": [
         {
-            "match": ";.*$",
-            "name": "comment.line.double-dash.castle-romeo"
-        },
-        {
-            "match": "(?<=^|[\\s()])(postulate|definition|theorem|lemma|proposition|axiom|#eval|#infer)(?=$|[\\s()])",
+            "match": "(?<=^|[\\s()])(NB|postulate|definition|theorem|lemma|proposition|axiom|#eval|#infer|have|in)(?=$|[\\s()])",
             "name": "keyword.other.castle-romeo"
         },
         {

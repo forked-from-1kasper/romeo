@@ -46,3 +46,8 @@ lemma lem1 : ∀ (f : Hom A x x), f = f :=
 λ f, refl f
 
 axiom ax1 : ∃ (g : Hom A x x), g = g ∘ g
+
+NB that’s a comment
+
+lemma lem2 : ∀ (f : Hom A x x), f ∘ f = f ⊃ f ∘ f = f ∘ f ∘ f :=
+λ f H, have H′ : f = f ∘ f => symm H in subst g (f ∘ f = f ∘ g) H′ (refl (f ∘ f))

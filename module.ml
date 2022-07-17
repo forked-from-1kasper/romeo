@@ -17,7 +17,7 @@ let upThm x t =
 
 let elab      stx = Term.salt Env.empty (expandTerm (unpack stx))
 let elabProp  stx = Term.saltProp Env.empty (expandProp (unpack stx))
-let elabProof stx = saltProof Env.empty (expandProof (unpack stx))
+let elabProof stx = Term.saltProof Env.empty (expandProof stx)
 
 let perform = function
   | Def (e1, e2)        -> Printf.printf "%s & %s\n" (showSExp e1) (showSExp (unpack e2))
