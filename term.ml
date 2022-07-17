@@ -94,7 +94,7 @@ let rec salt ns = function
   | Com (g, f)       -> Com (salt ns g, salt ns f)
   | App (f, x)       -> App (salt ns f, salt ns x)
   | Hom (t, a, b)    -> Hom (salt ns t, salt ns a, salt ns b)
-  | Eps (x, t, e)    -> let y = fresh x in Eps (x, salt ns t, saltProp (Env.add x y ns) e)
+  | Eps (x, t, e)    -> let y = fresh x in Eps (y, salt ns t, saltProp (Env.add x y ns) e)
 
 and saltProp ns = function
   | True             -> True
@@ -103,5 +103,5 @@ and saltProp ns = function
   | Or (a, b)        -> Or (saltProp ns a, saltProp ns b)
   | Impl (a, b)      -> Impl (saltProp ns a, saltProp ns b)
   | Eq (t1, t2)      -> Eq (salt ns t1, salt ns t2)
-  | Forall (x, t, e) -> let y = fresh x in Forall (x, salt ns t, saltProp (Env.add x y ns) e)
-  | Exists (x, t, e) -> let y = fresh x in Exists (x, salt ns t, saltProp (Env.add x y ns) e)
+  | Forall (x, t, e) -> let y = fresh x in Forall (y, salt ns t, saltProp (Env.add x y ns) e)
+  | Exists (x, t, e) -> let y = fresh x in Exists (y, salt ns t, saltProp (Env.add x y ns) e)

@@ -39,13 +39,14 @@ let universe = digits <$> (ch 'U' >> many numSubscript)
 
 let ws             = str (fun c -> c = ' ' || c = '\n' || c = '\t' || c = '\t') >> Monad.eps
 let keywords       = ["definition"; "theorem"; "infix"; "keyword"; "postulate"; "#infer"; "#eval"; ":="]
-let reserved       = ['('; ')'; '\n'; '\t'; '\r'; ' ']
+let reserved       = ['('; ')'; '\n'; '\t'; '\r'; ' '; ',']
 let isReserved   c = List.mem c reserved
 let isntReserved c = not (List.mem c reserved)
 let isntKeyword  s = not (List.mem s keywords)
 
 let ident = decorateErrors ["ident"] (guard isntKeyword (str isntReserved))
 let sexp = fix (fun p -> (node <$> (ch '(' >> optional ws >> many p << ch ')'))
+                     <|> (ch ',' >> pure (Atom ","))
                      <|> (atom <$> ident) << optional ws)
 
 let sexpToplevel = sexp >>= fun x -> many sexp >>= fun xs ->
@@ -159,4 +160,4 @@ and expandBinder = function
   | Node (Atom i :: Atom ":" :: ts) -> (Ident.ident i, expandTerm (Node ts))
   | e                               -> raise (InvalidSyntax e)
 and expandBinders c bs e =
-  List.fold_left (fun e0 b -> let (i, t) = expandBinder b in c (i, t, e0)) (expandProp e) bs
+  List.fold_right (fun b e0 -> let (i, t) = expandBinder b in c (i, t, e0)) bs (expandProp e)
