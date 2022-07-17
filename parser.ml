@@ -140,6 +140,7 @@ and unpack = function
 
 exception InvalidSyntax of sexp
 exception ExpectedIdent of sexp
+exception ExpectedNode  of sexp
 
 let rec ofNat n = if n <= 0 then Zero else Succ (ofNat (n - 1))
 
@@ -148,6 +149,14 @@ let expandVar x =
   | Ok (_, n) -> U (ofNat n)
   | Error _   -> Var (Ident.ident x)
 
+let expandIdent = function
+  | Atom x -> Ident.ident x
+  | e      -> raise (ExpectedIdent e)
+
+let expandNode = function
+  | Node es -> es
+  | e       -> raise (ExpectedNode e)
+
 let rec expandTerm = function
   | Atom x                                     -> expandVar x
   | Node [Atom "cod"; x]                       -> Cod (expandTerm x)
@@ -155,9 +164,14 @@ let rec expandTerm = function
   | Node [Atom "id"; x]                        -> Id  (expandTerm x)
   | Node [f; Atom "∘"; g]                      -> Com (expandTerm f, expandTerm g)
   | Node [Atom "Hom"; t; a; b]                 -> Hom (expandTerm t, expandTerm a, expandTerm b)
-  | Node [Node [Atom "ε"; b]; Atom ","; e]     -> let (i, t) = expandBinder b in Eps (i, t, expandProp e)
+  | Node [Node [Atom "ε"; b]; Atom ","; e]     -> let (i, t) = expandEpsBinder b in Eps (i, t, expandProp e)
   | Node (f :: xs)                             -> List.fold_left Term.app (expandTerm f) (List.map expandTerm xs)
   | e                                          -> raise (InvalidSyntax e)
+
+and expandEpsBinder = function
+  | Node (Atom i :: Atom ":" :: ts) -> Ident.ident i, expandTerm (Node ts)
+  | e                               -> raise (InvalidSyntax e)
+
 and expandProp = function
   | Atom "⊤"                                   -> True
   | Atom "⊥"                                   -> False
@@ -166,20 +180,17 @@ and expandProp = function
   | Node [a; Atom "⊃"; b]                      -> Impl (expandProp a, expandProp b)
   | Node [a; Atom "⇒"; b]                     -> Impl (expandProp a, expandProp b)
   | Node [t1; Atom "="; t2]                    -> Eq   (expandTerm t1, expandTerm t2)
-  | Node [Node (Atom "∀"  :: bs); Atom ","; e] -> expandBinders forall bs e
-  | Node [Node (Atom "∃"  :: bs); Atom ","; e] -> expandBinders exists bs e
-  | Node [Node (Atom "∃!" :: bs); Atom ","; e] -> expandBinders exuniq bs e
+  | Node [Node (Atom "∀"  :: es); Atom ","; e] -> expandBinders forall es e
+  | Node [Node (Atom "∃"  :: es); Atom ","; e] -> expandBinders exists es e
+  | Node [Node (Atom "∃!" :: es); Atom ","; e] -> expandBinders exuniq es e
   | e                                          -> raise (InvalidSyntax e)
-and expandBinder = function
-  | Node [Atom i; Atom ":"; t]                 -> (Ident.ident i, expandTerm t)
-  | Node (Atom i :: Atom ":" :: ts)            -> (Ident.ident i, expandTerm (Node ts))
-  | e                                          -> raise (InvalidSyntax e)
-and expandBinders c bs e =
-  List.fold_right (fun b e0 -> let (i, t) = expandBinder b in c (i, t, e0)) bs (expandProp e)
 
-let expandIdent = function
-  | Atom x -> Ident.ident x
-  | e      -> raise (ExpectedIdent e)
+and expandBinder es0 = let (is, es) = splitWhile ((<>) (Atom ":")) es0 in
+  let e = expandTerm (Node (List.tl es)) in List.map (fun i -> (expandIdent i, e)) is
+
+and expandBinders c es e =
+  let bs = List.concat (List.map (expandBinder % expandNode) es) in
+  List.fold_right (fun (i, t) e0 -> c (i, t, e0)) bs (expandProp e)
 
 let rec expandProof = function
   | Atom "?"                                        -> Hole
