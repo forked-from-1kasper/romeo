@@ -45,14 +45,17 @@ and evalApp ctx f x = let (_, c1, _) = extHom (infer ctx f) in match f, x, infer
   | _,          _,          _                                  -> App (f, x)
 
 and evalProp ctx = function
-  | True             -> True
-  | False            -> False
-  | And (a, b)       -> And (evalProp ctx a, evalProp ctx b)
-  | Or (a, b)        -> Or (evalProp ctx a, evalProp ctx b)
-  | Impl (a, b)      -> Impl (evalProp ctx a, evalProp ctx b)
-  | Eq (t1, t2)      -> Eq (eval ctx t1, eval ctx t2)
-  | Forall (x, t, e) -> let t' = eval ctx t in Forall (x, t', evalProp (upVar ctx x t') e)
-  | Exists (x, t, e) -> let t' = eval ctx t in Exists (x, t', evalProp (upVar ctx x t') e)
+  | True        -> True
+  | False       -> False
+  | And (a, b)  -> And (evalProp ctx a, evalProp ctx b)
+  | Or (a, b)   -> Or (evalProp ctx a, evalProp ctx b)
+  | Impl (a, b) -> Impl (evalProp ctx a, evalProp ctx b)
+  | Eq (t1, t2) -> Eq (eval ctx t1, eval ctx t2)
+  | Forall c    -> evalBinder forall ctx c
+  | Exists c    -> evalBinder exists ctx c
+  | ExUniq c    -> evalBinder exuniq ctx c
+
+and evalBinder c ctx (x, t, e) = let t' = eval ctx t in c (x, t', evalProp (upVar ctx x t') e)
 
 and subst ctx x e = function
   | U n           -> U n
@@ -74,6 +77,7 @@ and substProp ctx x e = function
   | Eq (t1, t2)   -> Eq (subst ctx x e t1, subst ctx x e t2)
   | Forall c      -> substClos forall ctx x e c
   | Exists c      -> substClos exists ctx x e c
+  | ExUniq c      -> substClos exuniq ctx x e c
 
 and substClos : 't. (clos -> 't) -> term Env.t -> ident -> term -> clos -> 't =
   fun ctor ctx x e (y, t, i) -> if x = y then ctor (y, t, i)
@@ -100,6 +104,7 @@ and convProp ctx e1 e2 = match e1, e2 with
   | Eq (a1, b1),      Eq (a2, b2)      -> conv ctx a1 a2 && conv ctx b1 b2
   | Forall c1,        Forall c2        -> convClos ctx c1 c2
   | Exists c1,        Exists c2        -> convClos ctx c1 c2
+  | ExUniq c1,        ExUniq c2        -> convClos ctx c1 c2
   | _,                _                -> false
 
 and convClos ctx (x, t1, i1) (y, t2, i2) = conv ctx t1 t2 &&

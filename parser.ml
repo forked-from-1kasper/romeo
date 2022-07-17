@@ -146,15 +146,16 @@ let rec expandTerm = function
   | Node (f :: xs)                            -> List.fold_left Term.app (expandTerm f) (List.map expandTerm xs)
   | e                                         -> raise (InvalidSyntax e)
 and expandProp = function
-  | Atom "⊤"                                  -> True
-  | Atom "⊥"                                  -> False
-  | Node [a; Atom "∧"; b]                     -> And (expandProp a, expandProp b)
-  | Node [a; Atom "∨"; b]                     -> Or  (expandProp a, expandProp b)
-  | Node [a; Atom "⊃"; b]                     -> And (expandProp a, expandProp b)
-  | Node [t1; Atom "="; t2]                   -> Eq  (expandTerm t1, expandTerm t2)
-  | Node [Node (Atom "∀" :: bs); Atom ","; e] -> expandBinders forall bs e
-  | Node [Node (Atom "∃" :: bs); Atom ","; e] -> expandBinders exists bs e
-  | e                                         -> raise (InvalidSyntax e)
+  | Atom "⊤"                                   -> True
+  | Atom "⊥"                                   -> False
+  | Node [a; Atom "∧"; b]                      -> And (expandProp a, expandProp b)
+  | Node [a; Atom "∨"; b]                      -> Or  (expandProp a, expandProp b)
+  | Node [a; Atom "⊃"; b]                      -> And (expandProp a, expandProp b)
+  | Node [t1; Atom "="; t2]                    -> Eq  (expandTerm t1, expandTerm t2)
+  | Node [Node (Atom "∀"  :: bs); Atom ","; e] -> expandBinders forall bs e
+  | Node [Node (Atom "∃"  :: bs); Atom ","; e] -> expandBinders exists bs e
+  | Node [Node (Atom "∃!" :: bs); Atom ","; e] -> expandBinders exuniq bs e
+  | e                                          -> raise (InvalidSyntax e)
 and expandBinder = function
   | Node [Atom i; Atom ":"; t]      -> (Ident.ident i, expandTerm t)
   | Node (Atom i :: Atom ":" :: ts) -> (Ident.ident i, expandTerm (Node ts))

@@ -55,6 +55,7 @@ and checkProp ctx = function
   | Eq (t1, t2)   -> eqNf ctx (check ctx t1) (check ctx t2)
   | Forall c      -> checkClos ctx c
   | Exists c      -> checkClos ctx c
+  | ExUniq c      -> checkClos ctx c
 
 and checkProp2 ctx e1 e2 =
   checkProp ctx e1; checkProp ctx e2

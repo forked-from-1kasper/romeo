@@ -24,12 +24,14 @@ and prop =
   | Eq     of term * term
   | Forall of clos
   | Exists of clos
+  | ExUniq of clos
 
 and clos = ident * term * prop
 
 let eps    (x, t, i) = Eps    (x, t, i)
 let forall (x, t, i) = Forall (x, t, i)
 let exists (x, t, i) = Exists (x, t, i)
+let exuniq (x, t, i) = ExUniq (x, t, i)
 let app f x          = App    (f, x)
 
 let freshTerm x = Var (freshName x)
@@ -105,3 +107,4 @@ and saltProp ns = function
   | Eq (t1, t2)      -> Eq (salt ns t1, salt ns t2)
   | Forall (x, t, e) -> let y = fresh x in Forall (y, salt ns t, saltProp (Env.add x y ns) e)
   | Exists (x, t, e) -> let y = fresh x in Exists (y, salt ns t, saltProp (Env.add x y ns) e)
+  | ExUniq (x, t, e) -> let y = fresh x in Exists (y, salt ns t, saltProp (Env.add x y ns) e)
