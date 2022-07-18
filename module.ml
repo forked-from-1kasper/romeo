@@ -49,17 +49,18 @@ let rec perform = function
 
 and checkFile filename =
   if Set.mem filename !checkedFiles then () else
+  begin
+    Printf.printf "Checking “%s”.\n" filename;
+    let chan  = open_in filename in
+    let input = Monad.ofChan chan in
 
-  let chan  = open_in filename in
-  let input = Monad.ofChan chan in
+    let eof = ref false in let pos = ref 0 in
 
-  let eof = ref false in
-  let pos = ref 0 in
-
-  while not !eof do
-    match Monad.runParser cmd input !pos with
-    | Error err   -> Printf.printf "Parse error:\n%s\n" err; eof := true
-    | Ok (_, Eof) -> eof := true
-    | Ok (n, c)   -> pos := n; (try perform c with err -> print_endline (Pp.showError err))
-  done; close_in chan; checkedFiles := Set.add filename !checkedFiles;
-  Printf.printf "File “%s” checked.\n" filename; flush_all ()
+    while not !eof do
+      match Monad.runParser cmd input !pos with
+      | Error err   -> Printf.printf "Parse error:\n%s\n" err; eof := true
+      | Ok (_, Eof) -> eof := true
+      | Ok (n, c)   -> pos := n; (try perform c with err -> print_endline (Pp.showError err))
+    done; close_in chan; checkedFiles := Set.add filename !checkedFiles;
+    Printf.printf "File “%s” checked.\n" filename; flush_all ()
+  end
