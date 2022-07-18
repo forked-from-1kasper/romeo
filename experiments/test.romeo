@@ -37,9 +37,6 @@ postulate ρ′ : Hom U (Hom A x x) A
 #eval ρ′ (id x)
 #eval ρ′ (id (id x))
 
-#infer ε (T : U), ∀ (C : U), ∃ (f : Hom U C T), ∀ (C′ : U) (g : Hom U C C′), ∃ (h : Hom U T C′), g = h ∘ f
-#infer ε (1 : C), ∀ (c : C), ∃! (f : Hom C 1 c), ⊤
-
 lemma lem1 : ∀ (f : Hom A x x), f = f :=
 λ f, refl f
 

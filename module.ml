@@ -28,15 +28,15 @@ let rec perform = function
                             let value   = macroexpand (unpack e2) in
                             let ctx0    = List.fold_left (fun ctx (s, t0) ->
                               let i = ident s in let t = elab t0 in ignore (Term.extUniv (check ctx t));
-                              if Env.mem i ctx.local then raise (VariableAlreadyDeclared i)
-                              else Term.upLocal ctx i t) ctx.term (List.rev bs) in
+                              if Env.mem i ctx.term.local then raise (VariableAlreadyDeclared i)
+                              else { ctx with term = Term.upLocal ctx.term i t }) ctx (List.rev bs) in
                             ignore (check ctx0 (Term.salt Env.empty (expandTerm value)));
                             macros := { variables = Set.of_list vbs; pattern = e; value = value } :: !macros
-  | Postulate (is, e)    -> let t = elab e in ignore (Term.extUniv (check ctx.term t)); List.iter (fun i -> informCheck i; upGlobal ctx.term (ident i) t) is
-  | Infer e              -> Printf.printf "INFER: %s\n" (Pp.showTerm (check ctx.term (elab e))); flush_all ()
-  | Eval e               -> let t = elab e in ignore (check ctx.term t); Printf.printf "EVAL: %s\n" (Pp.showTerm (eval ctx.term t)); flush_all ()
-  | Theorem (i, e0, p0)  -> informCheck i; let e = elabProp e0 in let p = elabProof p0 in checkProp ctx.term e; ensure ctx p e; upGlobal ctx.rho (ident i) e
-  | Axiom (i, e0)        -> informCheck i; let e = elabProp e0 in checkProp ctx.term e; upGlobal ctx.rho (ident i) e
+  | Postulate (is, e)    -> let t = elab e in ignore (Term.extUniv (check ctx t)); List.iter (fun i -> informCheck i; upGlobal ctx.term (ident i) t) is
+  | Infer e              -> Printf.printf "INFER: %s\n" (Pp.showTerm (check ctx (elab e))); flush_all ()
+  | Eval e               -> let t = elab e in ignore (check ctx t); Printf.printf "EVAL: %s\n" (Pp.showTerm (eval ctx t)); flush_all ()
+  | Theorem (i, e0, p0)  -> informCheck i; let e = elabProp e0 in let p = elabProof p0 in checkProp ctx e; ensure ctx p e; upGlobal ctx.rho (ident i) e
+  | Axiom (i, e0)        -> informCheck i; let e = elabProp e0 in checkProp ctx e; upGlobal ctx.rho (ident i) e
   | Infix (assoc, n, is) -> List.iter (fun i -> operators := Dict.add i (n, assoc) !operators) is
   | Variables is         -> List.iter (fun i -> variables := Set.add i !variables) is
   | Import fs            -> List.iter checkFile fs

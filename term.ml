@@ -13,7 +13,7 @@ type term =
   | Com    of term * term
   | App    of term * term
   | Hom    of term * term * term
-  | Eps    of clos
+  | Eps    of ident
 
 and prop =
   | True
@@ -28,7 +28,6 @@ and prop =
 
 and clos = ident * term * prop
 
-let eps    (x, t, i) = Eps    (x, t, i)
 let forall (x, t, i) = Forall (x, t, i)
 let exists (x, t, i) = Exists (x, t, i)
 let exuniq (x, t, i) = ExUniq (x, t, i)
@@ -106,7 +105,7 @@ let rec salt ns = function
   | Com (g, f)       -> Com (salt ns g, salt ns f)
   | App (f, x)       -> App (salt ns f, salt ns x)
   | Hom (t, a, b)    -> Hom (salt ns t, salt ns a, salt ns b)
-  | Eps (x, t, e)    -> let y = fresh x in Eps (y, salt ns t, saltProp (Env.add x y ns) e)
+  | Eps x            -> Eps (freshVar ns x)
 
 and saltProp ns = function
   | True             -> True

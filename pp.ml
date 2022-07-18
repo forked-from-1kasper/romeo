@@ -19,7 +19,7 @@ let rec ppTerm paren t =
   | Com (g, f)    -> Printf.sprintf "%s ∘ %s" (showTerm g) (showTerm f)
   | App (f, x)    -> Printf.sprintf "%s %s" (ppTerm true f) (ppTerm true x)
   | Hom (t, a, b) -> Printf.sprintf "Hom %s %s %s" (ppTerm true t) (ppTerm true a) (ppTerm true b)
-  | Eps (i, t, e) -> Printf.sprintf "ε (%s : %s), %s" (showIdent i) (showTerm t) (showProp e)
+  | Eps x         -> Printf.sprintf "ε %s" (showIdent x)
   in match t with U _ | Var _ -> s | _ -> parens paren s
 
 and ppProp paren e =

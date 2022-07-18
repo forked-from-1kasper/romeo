@@ -1,9 +1,12 @@
-open Ident
 open Term
+
+type environment =
+  { term : term context;
+    rho  : prop context }
 
 let rec infer ctx = function
   | U n           -> U (Succ n)
-  | Var x         -> lookup ctx x
+  | Var x         -> lookup ctx.term x
   | Dom g | Cod g -> let (t, _, _) = extHom (infer ctx g) in t
   | Id x          -> Hom (infer ctx x, x, x)
   | Com (g, f)    -> let (t, _, c) = extHom (infer ctx g) in
@@ -11,7 +14,7 @@ let rec infer ctx = function
                      Hom (t, a, c)
   | App (f, x)    -> inferAp ctx f x
   | Hom (t, _, _) -> U (extUniv (infer ctx t))
-  | Eps (_, t, _) -> t
+  | Eps x         -> let (_, t, _) = extExUniq (lookup ctx.rho x) in t
 
 and inferAp ctx f x =
   let (_, c1, c2) = extHom (infer ctx f) in match infer ctx x with
@@ -27,7 +30,7 @@ and eval ctx = function
   | Com (f, g)    -> com (eval ctx f) (eval ctx g)
   | App (f, x)    -> evalApp ctx (eval ctx f) (eval ctx x)
   | Hom (t, a, b) -> Hom (eval ctx t, eval ctx a, eval ctx b)
-  | Eps (x, t, e) -> let t' = eval ctx t in Eps (x, t', evalProp (upLocal ctx x t') e)
+  | Eps x         -> Eps x
 
 and dom ctx g = let (_, t, _) = extHom (infer ctx g) in t
 and cod ctx g = let (_, _, t) = extHom (infer ctx g) in t
@@ -55,7 +58,8 @@ and evalProp ctx = function
   | Exists c    -> evalBinder exists ctx c
   | ExUniq c    -> evalBinder exuniq ctx c
 
-and evalBinder c ctx (x, t, e) = let t' = eval ctx t in c (x, t', evalProp (upLocal ctx x t') e)
+and evalBinder c ctx (x, t, e) = let t' = eval ctx t in
+  c (x, t', evalProp { ctx with term = upLocal ctx.term x t' } e)
 
 and subst ctx x e = function
   | U n           -> U n
@@ -66,7 +70,7 @@ and subst ctx x e = function
   | App (f, a)    -> evalApp ctx (subst ctx x e f) (subst ctx x e a)
   | Com (f, g)    -> com (subst ctx x e f) (subst ctx x e g)
   | Hom (t, a, b) -> Hom (subst ctx x e t, subst ctx x e a, subst ctx x e b)
-  | Eps c         -> substClos eps ctx x e c
+  | Eps x         -> Eps x
 
 and substProp ctx x e = function
   | True          -> True
@@ -79,9 +83,8 @@ and substProp ctx x e = function
   | Exists c      -> substClos exists ctx x e c
   | ExUniq c      -> substClos exuniq ctx x e c
 
-and substClos : 't. (clos -> 't) -> term context -> ident -> term -> clos -> 't =
-  fun ctor ctx x e (y, t, i) -> if x = y then ctor (y, t, i)
-    else ctor (y, subst ctx x e t, substProp ctx x e i)
+and substClos ctor ctx x e (y, t, i) =
+  if x = y then ctor (y, t, i) else ctor (y, subst ctx x e t, substProp ctx x e i)
 
 and conv ctx t1 t2 = match t1, t2 with
   | U n,              U m              -> n = m
@@ -92,7 +95,7 @@ and conv ctx t1 t2 = match t1, t2 with
   | Com (f1, g1),     Com (f2, g2)     -> conv ctx f1 f2 && conv ctx g1 g2
   | App (f1, x1),     App (f2, x2)     -> conv ctx f1 f2 && conv ctx x1 x2
   | Hom (t1, a1, b1), Hom (t2, a2, b2) -> conv ctx t1 t2 && conv ctx a1 a2 && conv ctx b1 b2
-  | Eps c1,           Eps c2           -> convClos ctx c1 c2
+  | Eps x,            Eps y            -> x = y
   | _,                _                -> false
 
 and convProp ctx e1 e2 = match e1, e2 with

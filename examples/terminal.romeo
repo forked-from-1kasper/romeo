@@ -23,8 +23,11 @@ lemma compositionIsAssoc : ∀ (a b c d : C) (f : Hom C a b) (g : Hom C b c) (h 
 λ _ _ _ _ f g h, refl (h ∘ g ∘ f)
 
 theorem terminalIsUnique : ∀ (T₁ T₂ : C), isTerminal T₁ ⊃ isTerminal T₂ ⊃ T₁ ≅ T₂ :=
-λ T₁ T₂ G H, exis (ε (g : Hom C T₁ T₂), ⊤) (exis (ε (g : Hom C T₂ T₁), ⊤)
-  (have G′ : ∃!-Hom T₁ T₁ => inst G T₁ in
-   have H′ : ∃!-Hom T₂ T₂ => inst H T₂ in
-    conj (uniq H′ trivial trivial)
-         (uniq G′ trivial trivial)))
+λ T₁ T₂ G H,
+  have G′ : ∃!-Hom T₂ T₁ => inst G T₂ in
+  have H′ : ∃!-Hom T₁ T₂ => inst H T₁ in
+  exis (ε H′) (exis (ε G′)
+    (have G″ : ∃!-Hom T₁ T₁ => inst G T₁ in
+     have H″ : ∃!-Hom T₂ T₂ => inst H T₂ in
+     conj (uniq H″ trivial trivial)
+          (uniq G″ trivial trivial)))
