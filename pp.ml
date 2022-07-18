@@ -66,12 +66,23 @@ let rec ppProof paren e =
 
 and showProof e = ppProof false e
 
+let typeMismatch = Printf.sprintf "Type mismatch:\n  %s\nis not equal to\n  %s"
+
 let showError = function
-  | VariableNotFound x -> Printf.sprintf "Unbound variable “%s”." (showIdent x)
-  | ExpectedUniv t     -> Printf.sprintf "“%s” expected to be a universe." (showTerm t)
-  | ExpectedHom t      -> Printf.sprintf "“%s” expected to be Hom." (showTerm t)
-  | Ineq (t1, t2)      -> Printf.sprintf "%s\n  ≠\n%s" (showTerm t1) (showTerm t2)
-  | InvalidSyntax stx  -> Printf.sprintf "Invalid syntax:\n%s\n" (showSExp stx)
-  | CheckError (e, t)  -> Printf.sprintf "Cannot check “%s” against “%s”." (showProof e) (showProp t)
-  | IneqProp (e1, e2)  -> Printf.sprintf "%s\n  ≠\n%s" (showProp e1) (showProp e2)
-  | ex                 -> Printf.sprintf "Uncaught exception: %s" (Printexc.to_string ex)
+  | VariableAlreadyDeclared x -> Printf.sprintf "Variable “%s” is already declared." (showIdent x)
+  | VariableNotFound x        -> Printf.sprintf "Unbound variable “%s”." (showIdent x)
+  | ExpectedUniv t            -> Printf.sprintf "“%s” expected to be a universe." (showTerm t)
+  | ExpectedHom t             -> Printf.sprintf "“%s” expected to be Hom." (showTerm t)
+  | ExpectedAnd e             -> Printf.sprintf "“%s” expected to be a conjunction." (showProp e)
+  | ExpectedImpl e            -> Printf.sprintf "“%s” expected to be an implication." (showProp e)
+  | ExpectedForall e          -> Printf.sprintf "“%s” expected to be an universal quantifier." (showProp e)
+  | ExpectedExists e          -> Printf.sprintf "“%s” expected to be an existential quantifier." (showProp e)
+  | ExpectedExUniq e          -> Printf.sprintf "“%s” expected to be ∃! quantifier." (showProp e)
+  | ExpectedEq e              -> Printf.sprintf "“%s” expected to be an equality." (showProp e)
+  | ExpectedIdent e           -> Printf.sprintf "“%s” expected to be an ident." (showSExp e)
+  | ExpectedNode e            -> Printf.sprintf "“%s” expected to be a node." (showSExp e)
+  | Ineq (t1, t2)             -> typeMismatch (showTerm t1) (showTerm t2)
+  | IneqProp (e1, e2)         -> typeMismatch (showProp e1) (showProp e2)
+  | InvalidSyntax stx         -> Printf.sprintf "Invalid syntax:\n  %s\n" (showSExp stx)
+  | CheckError (e, t)         -> Printf.sprintf "Cannot check\n  %s\nagainst\n  %s" (showProof e) (showProp t)
+  | ex                        -> Printf.sprintf "Uncaught exception: %s" (Printexc.to_string ex)

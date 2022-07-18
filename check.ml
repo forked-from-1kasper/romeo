@@ -2,7 +2,7 @@ open Ident
 open Eval
 open Term
 
-let rec check ctx = function
+let rec check ctx t = try match t with
   | U n           -> U (Succ n)
   | Var x         -> lookup ctx x
   | Dom g | Cod g -> let (t, _, _) = extHom (check ctx g) in t
@@ -15,13 +15,14 @@ let rec check ctx = function
                      eqNf ctx t (infer ctx a); eqNf ctx t (infer ctx b);
                      U (extUniv c)
   | Eps (x, t, e) -> ignore (extUniv (check ctx t)); checkProp (upVar ctx x t) e; t
+  with ex -> Printf.printf "When trying to infer type of\n  %s\n" (Pp.showTerm t); raise ex
 
 and checkAp ctx f x = match check ctx f, check ctx x with
   | Hom (U _, c1, c2), Hom (c, a, b) when conv ctx c c1 -> Hom (c2, evalApp ctx f a, evalApp ctx f b)
   | Hom (U _, c1, c2), c                                -> eqNf ctx c c1; c2
   | t,                 _                                -> raise (ExpectedUniv t)
 
-and checkProp ctx = function
+and checkProp ctx e = try match e with
   | True          -> ()
   | False         -> ()
   | And (a, b)    -> checkProp2 ctx a b
@@ -31,6 +32,7 @@ and checkProp ctx = function
   | Forall c      -> checkClos ctx c
   | Exists c      -> checkClos ctx c
   | ExUniq c      -> checkClos ctx c
+  with ex -> Printf.printf "When trying to infer type of\n  %s\n" (Pp.showProp e); raise ex
 
 and checkProp2 ctx e1 e2 =
   checkProp ctx e1; checkProp ctx e2
@@ -49,7 +51,7 @@ let get ctx x =
 
 let coincide ctx e1 e2 = if not (convProp ctx.term e1 e2) then raise (IneqProp (e1, e2))
 
-let rec ensure ctx e t = match e, t with
+let rec ensure ctx e t = try match e, t with
   | Hole,                 _                   -> Printf.printf "Hole:\n%s\n" (Pp.showProp t)
   | PVar x,               _                   -> coincide ctx (get ctx x) t
   | Have (x, t1, e1, e2), t2                  -> ensure ctx e1 t1; ensure { ctx with proof = Env.add x t1 ctx.proof } e2 t2
@@ -82,3 +84,4 @@ let rec ensure ctx e t = match e, t with
                                                  ensure ctx e1 (substProp ctx.term x t1 e);
                                                  ensure ctx e2 (substProp ctx.term x t2 e)
   | _,                        _               -> raise (CheckError (e, t))
+  with ex -> Printf.printf "When trying to typecheck\n  %s\nAgainst type\n  %s\n" (Pp.showProof e) (Pp.showProp t); raise ex
