@@ -14,7 +14,7 @@ let rec infer ctx = function
                      Hom (t, a, c)
   | App (f, x)    -> inferAp ctx f x
   | Hom (t, _, _) -> U (extUniv (infer ctx t))
-  | Eps x         -> let (_, t, _) = extExUniq (lookup ctx.rho x) in t
+  | Eps x         -> let (_, t, _) = extExists (lookup ctx.rho x) in t
 
 and inferAp ctx f x =
   let (_, c1, c2) = extHom (infer ctx f) in match infer ctx x with

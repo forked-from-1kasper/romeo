@@ -14,7 +14,7 @@ let rec check ctx t = try match t with
   | Hom (t, a, b) -> let c = check ctx t in ignore (extUniv c);
                      eqNf ctx t (infer ctx a); eqNf ctx t (infer ctx b);
                      U (extUniv c)
-  | Eps x         -> let (_, t, _) = extExUniq (lookup ctx.rho x) in t
+  | Eps x         -> let (_, t, _) = extExists (lookup ctx.rho x) in t
   with ex -> Printf.printf "When trying to infer type of\n  %s\n" (Pp.showTerm t); raise ex
 
 and checkAp ctx f x = match check ctx f, check ctx x with
