@@ -1,21 +1,8 @@
 postulate A B C D : U
 
-definition test X :=
-∀ (x : X), x = x ⊃ ⊤ ⊃ ∃ (f : Hom C x x),
-    f ∘ f ∘ f ∘ f ∘ f = id x
-  ∧ f ∘ f = id x ∧ (f ∘ f ∘ f = f ∨ f ∘ f = f)
+variables X Y Z
 
-definition test′ X Y :=
-∀ (x : X) (y : Y), ∃ (f : Hom U X Y), f x = y
-
-definition test″ :=
-∀ (C : U), C = C ⇒ C = C ⊃ C = C ⊃ C = C
-
-infixr 60 ×
-
-definition diag A :=
-A × A × A × A × A
-
+definition ∘² X := X ∘ X
 
 #infer Hom U₂ U₁ U₁
 
@@ -28,6 +15,10 @@ postulate H : Hom U C D
 #eval (H ∘ G) ∘ id B ∘ (F ∘ id A)
 
 postulate x y z : A
+
+postulate φ : Hom A x x
+#eval ∘² (φ ∘ φ)
+
 postulate f : Hom A x y
 postulate g : Hom A y z
 

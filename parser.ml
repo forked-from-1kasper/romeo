@@ -2,6 +2,8 @@ open Monad
 open Term
 
 module Dict = Map.Make(String)
+module Set  = Set.Make(String)
+
 type associativity = Left | Right | Binder
 
 type sexp =
@@ -16,6 +18,7 @@ type command =
   | Axiom     of string * sexp
   | Def       of sexp * sexp
   | Infix     of associativity * int * string list
+  | Variables of string list
   | Comment   of string
   | Eof
 
@@ -86,10 +89,13 @@ let postulate = token "postulate" >> ws >> sepBy1 ws (guard ((<>) ":") ident) <<
 let infer = debug "#infer" (fun e -> Infer e)
 let eval  = debug "#eval"  (fun e -> Eval e)
 
+let variables = token "variables" >> ws >> sepBy1 ws ident >>= fun is -> pure (Variables is)
+
 let cmdeof = eof >> pure Eof
 
-let cmdline = comment <|> def <|> thm    <|> postulate <|> axm
-          <|> infer  <|> eval <|> infixr <|> infixl    <|> cmdeof
+let cmdline = comment <|> def  <|> thm    <|> postulate <|> axm
+          <|> infer   <|> eval <|> infixr <|> infixl    <|> variables
+          <|> cmdeof
 
 let cmd = optional ws >> cmdline
 
@@ -232,3 +238,52 @@ let rec expandProof = function
   | Node (Atom x :: y :: ys)                        -> Mp (Ident.ident x, List.map expandProof (y :: ys))
   | Node [e]                                        -> expandProof e
   | e                                               -> raise (InvalidSyntax e)
+
+type macro =
+  { variables : Set.t;
+    pattern   : sexp;
+    value     : sexp }
+
+let rec matchAgainst ns vbs e0 e1 = match e0, e1 with
+  | Atom x,  _ when Set.mem x vbs ->
+  begin match Dict.find_opt x ns with
+    | Some e2 -> if e1 = e2 then Some ns else None
+    | None    -> Some (Dict.add x e1 ns)
+  end
+  | Atom x,  Atom y when x = y     -> Some ns
+  | Node xs, Node ys               ->
+    if List.length xs <> List.length ys then None
+    else List.fold_left2 (fun b t0 t1 -> Option.bind b (fun ns0 -> matchAgainst ns0 vbs t0 t1))
+                         (Some ns) xs ys
+  | _,       _                     -> None
+
+let rec multiSubst ns = function
+  | Atom x when Dict.mem x ns -> Dict.find x ns
+  | Atom y                    -> Atom y
+  | Node xs                   -> Node (List.map (multiSubst ns) xs)
+
+let variables = ref Set.empty
+let macros    = ref []
+
+let rec collectVariables vbs = function
+  | Atom x when Set.mem x !variables -> Set.add x vbs
+  | Atom _                           -> vbs
+  | Node es                          -> List.fold_left collectVariables vbs es
+
+let rec findMacro e = function
+  | m :: ms ->
+  begin match matchAgainst Dict.empty m.variables m.pattern e with
+    | None    -> findMacro e ms
+    | Some ns -> Some (multiSubst ns m.value)
+  end
+  | []      -> None
+
+let expandExterior e0 =
+  match findMacro e0 !macros with
+  | Some e -> e
+  | None   -> e0
+
+let rec macroexpand e =
+  match expandExterior e with
+  | Node es -> Node (List.map macroexpand es)
+  | t       -> t
