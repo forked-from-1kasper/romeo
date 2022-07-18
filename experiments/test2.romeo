@@ -1,0 +1,2 @@
+lemma obvious : ⊤ :=
+trivial

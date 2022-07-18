@@ -4,6 +4,7 @@ open Ident
 open Term
 open Eval
 
+let checkedFiles = ref Set.empty
 let ctx = ref { term = Env.empty; proof = Env.empty }
 
 let ppAlreadyDeclared x = Printf.printf "Variable “%s” is already declared.\n" (Pp.showIdent x)
@@ -45,6 +46,8 @@ let rec perform = function
   | Eof                  -> ()
 
 and checkFile filename =
+  if Set.mem filename !checkedFiles then () else
+
   let chan  = open_in filename in
   let input = Monad.ofChan chan in
 
@@ -56,4 +59,5 @@ and checkFile filename =
     | Error err   -> Printf.printf "Parse error:\n%s\n" err; eof := true
     | Ok (_, Eof) -> eof := true
     | Ok (n, c)   -> pos := n; (try perform c with err -> print_endline (Pp.showError err))
-  done; close_in chan; Printf.printf "File “%s” checked.\n" filename
+  done; close_in chan; checkedFiles := Set.add filename !checkedFiles;
+  Printf.printf "File “%s” checked.\n" filename

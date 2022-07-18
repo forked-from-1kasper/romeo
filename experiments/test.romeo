@@ -47,7 +47,7 @@ axiom ax1 : ∃ (g : Hom A x x), g = g ∘ g
 
 NB that’s a comment
 
-import experiments/test2.romeo
+import experiments/test2.romeo experiments/test2.romeo
 
 lemma lem2 : ∀ (f : Hom A x x), f ∘ f = f ⊃ f ∘ f = f ∘ f ∘ f :=
 λ f H, have H′ : f = f ∘ f => symm H in subst g (f ∘ f = f ∘ g) H′ (refl (f ∘ f))
