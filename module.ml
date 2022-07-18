@@ -20,14 +20,15 @@ let elabProp  stx = Term.saltProp Env.empty (expandProp (unpack stx))
 let elabProof stx = Term.saltProof Env.empty (expandProof stx)
 
 let perform = function
-  | Def (e1, e2)        -> Printf.printf "%s & %s\n" (showSExp e1) (showSExp (unpack e2))
-  | Postulate (is, e)   -> let t = elab e in ignore (Term.extUniv (check !ctx.term t)); List.iter (fun i -> upGlobal (ident i) t) is
-  | Infer e             -> print_endline (Pp.showTerm (check !ctx.term (elab e)))
-  | Eval e              -> let t = elab e in ignore (check !ctx.term t); print_endline (Pp.showTerm (eval !ctx.term t))
-  | Theorem (i, e0, p0) -> let e = elabProp e0 in let p = elabProof p0 in checkProp !ctx.term e; ensure !ctx p e; upThm (ident i) e
-  | Axiom (i, e0)       -> let e = elabProp e0 in checkProp !ctx.term e; upThm (ident i) e
-  | Comment _           -> ()
-  | Eof                 -> ()
+  | Def (e1, e2)         -> Printf.printf "%s & %s\n" (showSExp e1) (showSExp (unpack e2))
+  | Postulate (is, e)    -> let t = elab e in ignore (Term.extUniv (check !ctx.term t)); List.iter (fun i -> upGlobal (ident i) t) is
+  | Infer e              -> print_endline (Pp.showTerm (check !ctx.term (elab e)))
+  | Eval e               -> let t = elab e in ignore (check !ctx.term t); print_endline (Pp.showTerm (eval !ctx.term t))
+  | Theorem (i, e0, p0)  -> let e = elabProp e0 in let p = elabProof p0 in checkProp !ctx.term e; ensure !ctx p e; upThm (ident i) e
+  | Axiom (i, e0)        -> let e = elabProp e0 in checkProp !ctx.term e; upThm (ident i) e
+  | Infix (assoc, n, is) -> List.iter (fun i -> operators := Dict.add i (n, assoc) !operators) is
+  | Comment _            -> ()
+  | Eof                  -> ()
 
 let checkFile filename =
   let chan  = open_in filename in

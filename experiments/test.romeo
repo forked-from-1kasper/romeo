@@ -11,8 +11,10 @@ definition test′ X Y :=
 definition test″ :=
 ∀ (C : U), C = C ⇒ C = C ⊃ C = C ⊃ C = C
 
+infixr 60 ×
+
 definition diag A :=
-A × A
+A × A × A × A × A
 
 
 #infer Hom U₂ U₁ U₁

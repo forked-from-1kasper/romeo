@@ -2,6 +2,7 @@ open Monad
 open Term
 
 module Dict = Map.Make(String)
+type associativity = Left | Right | Binder
 
 type sexp =
   | Atom of string
@@ -14,6 +15,7 @@ type command =
   | Theorem   of string * sexp * sexp
   | Axiom     of string * sexp
   | Def       of sexp * sexp
+  | Infix     of associativity * int * string list
   | Comment   of string
   | Eof
 
@@ -40,8 +42,8 @@ let digits ns = let deg = ref 1 in let m = ref 0 in
 let universe = digits <$> (ch 'U' >> many numSubscript)
 
 let ws             = str (fun c -> c = ' ' || c = '\n' || c = '\t' || c = '\t') >> Monad.eps
-let keywords       = ["definition"; "theorem"; "lemma"; "proposition"; "infix";
-                      "postulate"; "axiom"; "NB"; "keyword"; "#infer"; "#eval"; ":="]
+let keywords       = ["definition"; "theorem"; "lemma"; "proposition"; "infixl"; "infixr";
+                      "postulate"; "axiom"; "NB"; "variables"; "#infer"; "#eval"; ":="]
 let reserved       = ['('; ')'; '\n'; '\t'; '\r'; ' '; ',']
 let isReserved   c = List.mem c reserved
 let isntReserved c = not (List.mem c reserved)
@@ -68,6 +70,12 @@ let axm = token "axiom" >> ws >> ident >>= fun i ->
   ws >> token ":" >> ws >> sexpToplevel >>= fun e ->
     pure (Axiom (i, e))
 
+let infix assoc tok = token tok >> ws >> ident << ws >>= fun e ->
+  sepBy1 ws ident >>= fun is -> pure (Infix (assoc, int_of_string e, is))
+
+let infixl = infix Left  "infixl"
+let infixr = infix Right "infixr"
+
 let debug ident fn = token ident >> ws >> sexpToplevel >>= fun e -> pure (fn e)
 
 let comment = token "NB" >> ws >> str (fun c -> c <> '\n' && c <> '\r') >>= fun s -> optional ws >> pure (Comment s)
@@ -78,10 +86,14 @@ let postulate = token "postulate" >> ws >> sepBy1 ws (guard ((<>) ":") ident) <<
 let infer = debug "#infer" (fun e -> Infer e)
 let eval  = debug "#eval"  (fun e -> Eval e)
 
-let cmd = optional ws >> comment <|> def <|> thm <|> postulate <|> axm <|> infer <|> eval <|> (eof >> pure Eof)
+let cmdeof = eof >> pure Eof
+
+let cmdline = comment <|> def <|> thm    <|> postulate <|> axm
+          <|> infer  <|> eval <|> infixr <|> infixl    <|> cmdeof
+
+let cmd = optional ws >> cmdline
 
 (* second stage parser *)
-type associativity = Left | Right | Binder
 
 let builtinInfix = [
   ",", (1, Binder); "=", (50, Left); "∧", (20, Right); "∨", (30, Right);
