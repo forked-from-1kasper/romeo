@@ -27,7 +27,7 @@ and eval ctx = function
   | Com (f, g)    -> com (eval ctx f) (eval ctx g)
   | App (f, x)    -> evalApp ctx (eval ctx f) (eval ctx x)
   | Hom (t, a, b) -> Hom (eval ctx t, eval ctx a, eval ctx b)
-  | Eps (x, t, e) -> let t' = eval ctx t in Eps (x, t', evalProp (upVar ctx x t') e)
+  | Eps (x, t, e) -> let t' = eval ctx t in Eps (x, t', evalProp (upLocal ctx x t') e)
 
 and dom ctx g = let (_, t, _) = extHom (infer ctx g) in t
 and cod ctx g = let (_, _, t) = extHom (infer ctx g) in t
@@ -55,7 +55,7 @@ and evalProp ctx = function
   | Exists c    -> evalBinder exists ctx c
   | ExUniq c    -> evalBinder exuniq ctx c
 
-and evalBinder c ctx (x, t, e) = let t' = eval ctx t in c (x, t', evalProp (upVar ctx x t') e)
+and evalBinder c ctx (x, t, e) = let t' = eval ctx t in c (x, t', evalProp (upLocal ctx x t') e)
 
 and subst ctx x e = function
   | U n           -> U n
@@ -79,7 +79,7 @@ and substProp ctx x e = function
   | Exists c      -> substClos exists ctx x e c
   | ExUniq c      -> substClos exuniq ctx x e c
 
-and substClos : 't. (clos -> 't) -> term Env.t -> ident -> term -> clos -> 't =
+and substClos : 't. (clos -> 't) -> term context -> ident -> term -> clos -> 't =
   fun ctor ctx x e (y, t, i) -> if x = y then ctor (y, t, i)
     else ctor (y, subst ctx x e t, substProp ctx x e i)
 

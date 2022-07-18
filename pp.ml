@@ -38,6 +38,11 @@ and ppProp paren e =
 and showTerm t = ppTerm false t
 and showProp e = ppProp false e
 
+let showCtx show ctx =
+  Env.bindings ctx.local
+  |> List.map (fun (x, e) -> Printf.sprintf "%s : %s" (showIdent x) (show e))
+  |> String.concat "\n"
+
 let rec ppProof paren e =
   let s = match e with
   | Hole                 -> "?"

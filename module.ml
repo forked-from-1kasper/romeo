@@ -5,17 +5,13 @@ open Term
 open Eval
 
 let checkedFiles = ref Set.empty
-let ctx = ref { term = Env.empty; proof = Env.empty }
+let ctx = { term = alloc (); rho = alloc () }
 
 let ppAlreadyDeclared x = Printf.printf "Variable “%s” is already declared.\n" (Pp.showIdent x)
 
-let upGlobal x t =
-  if Env.mem x !ctx.term then ppAlreadyDeclared x
-  else ctx := { term = Term.upVar !ctx.term x t; proof = !ctx.proof }
-
-let upThm x t =
-  if Env.mem x !ctx.proof then ppAlreadyDeclared x
-  else ctx := { term = !ctx.term; proof = Env.add x t !ctx.proof }
+let upGlobal ctx x t =
+  if Env.mem x !(ctx.global) then ppAlreadyDeclared x
+  else ctx.global := Env.add x t !(ctx.global)
 
 let elab      stx = Term.salt Env.empty (expandTerm (macroexpand (unpack stx)))
 let elabProp  stx = Term.saltProp Env.empty (expandProp (macroexpand (unpack stx)))
@@ -32,15 +28,15 @@ let rec perform = function
                             let value   = macroexpand (unpack e2) in
                             let ctx0    = List.fold_left (fun ctx (s, t0) ->
                               let i = ident s in let t = elab t0 in ignore (Term.extUniv (check ctx t));
-                              if Env.mem i ctx then raise (VariableAlreadyDeclared i)
-                              else Term.upVar ctx i t) !ctx.term (List.rev bs) in
+                              if Env.mem i ctx.local then raise (VariableAlreadyDeclared i)
+                              else Term.upLocal ctx i t) ctx.term (List.rev bs) in
                             ignore (check ctx0 (Term.salt Env.empty (expandTerm value)));
                             macros := { variables = Set.of_list vbs; pattern = e; value = value } :: !macros
-  | Postulate (is, e)    -> let t = elab e in ignore (Term.extUniv (check !ctx.term t)); List.iter (fun i -> informCheck i; upGlobal (ident i) t) is
-  | Infer e              -> Printf.printf "INFER: %s\n" (Pp.showTerm (check !ctx.term (elab e))); flush_all ()
-  | Eval e               -> let t = elab e in ignore (check !ctx.term t); Printf.printf "EVAL: %s\n" (Pp.showTerm (eval !ctx.term t)); flush_all ()
-  | Theorem (i, e0, p0)  -> informCheck i; let e = elabProp e0 in let p = elabProof p0 in checkProp !ctx.term e; ensure !ctx p e; upThm (ident i) e
-  | Axiom (i, e0)        -> informCheck i; let e = elabProp e0 in checkProp !ctx.term e; upThm (ident i) e
+  | Postulate (is, e)    -> let t = elab e in ignore (Term.extUniv (check ctx.term t)); List.iter (fun i -> informCheck i; upGlobal ctx.term (ident i) t) is
+  | Infer e              -> Printf.printf "INFER: %s\n" (Pp.showTerm (check ctx.term (elab e))); flush_all ()
+  | Eval e               -> let t = elab e in ignore (check ctx.term t); Printf.printf "EVAL: %s\n" (Pp.showTerm (eval ctx.term t)); flush_all ()
+  | Theorem (i, e0, p0)  -> informCheck i; let e = elabProp e0 in let p = elabProof p0 in checkProp ctx.term e; ensure ctx p e; upGlobal ctx.rho (ident i) e
+  | Axiom (i, e0)        -> informCheck i; let e = elabProp e0 in checkProp ctx.term e; upGlobal ctx.rho (ident i) e
   | Infix (assoc, n, is) -> List.iter (fun i -> operators := Dict.add i (n, assoc) !operators) is
   | Variables is         -> List.iter (fun i -> variables := Set.add i !variables) is
   | Import fs            -> List.iter checkFile fs

@@ -50,14 +50,18 @@ exception ExpectedExists of prop
 exception ExpectedExUniq of prop
 exception ExpectedEq     of prop
 
-type ctx = term Env.t
+type 't context =
+  { local  : 't Env.t;
+    global : 't Env.t ref }
 
-let upVar ctx x t = Env.add x t ctx
+let alloc () = { local = Env.empty; global = ref Env.empty }
+let upLocal ctx x t = { ctx with local = Env.add x t ctx.local }
 
 let lookup ctx x =
-  match Env.find_opt x ctx with
-  | None   -> raise (VariableNotFound x)
-  | Some t -> t
+  match Env.find_opt x ctx.local, Env.find_opt x !(ctx.global) with
+  | Some t, _      -> t
+  | _,      Some t -> t
+  | None,   None   -> raise (VariableNotFound x)
 
 let extUniv = function
   | U n -> n
