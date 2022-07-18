@@ -53,6 +53,7 @@ let coincide ctx e1 e2 = if not (convProp ctx.term e1 e2) then raise (IneqProp (
 
 let rec ensure ctx e t = try match e, t with
   | Hole,                 _                   -> Printf.printf "Hole:\n%s\n" (Pp.showProp t)
+  | Trivial,              True                -> ()
   | PVar x,               _                   -> coincide ctx (get ctx x) t
   | Have (x, t1, e1, e2), t2                  -> ensure ctx e1 t1; ensure { ctx with proof = Env.add x t1 ctx.proof } e2 t2
   | Absurd u,             _                   -> ensure ctx u False

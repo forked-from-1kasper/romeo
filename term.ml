@@ -117,6 +117,7 @@ and saltProp ns = function
 
 type proof =
   | Hole
+  | Trivial
   | PVar     of ident
   | Have     of ident * prop * proof * proof
   | Absurd   of proof                                          (* ⊥ ⊢ A *)
@@ -143,6 +144,7 @@ exception CheckError of proof * prop
 
 let rec saltProof ns = function
   | Hole                 -> Hole
+  | Trivial              -> Trivial
   | PVar x               -> PVar (freshVar ns x)
   | Have (x, t, e1, e2)  -> let y = fresh x in Have (y, saltProp ns t, saltProof ns e1, saltProof (Env.add x y ns) e2)
   | Absurd e             -> Absurd (saltProof ns e)

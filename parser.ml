@@ -20,6 +20,7 @@ type command =
   | Def       of sexp * sexp
   | Infix     of associativity * int * string list
   | Variables of string list
+  | Import    of string list
   | Comment   of string
   | Eof
 
@@ -95,12 +96,13 @@ let infer = debug "#infer" (fun e -> Infer e)
 let eval  = debug "#eval"  (fun e -> Eval e)
 
 let variables = token "variables" >> ws >> sepBy1 ws ident >>= fun is -> pure (Variables is)
+let import = token "import" >> ws >> sepBy1 ws ident >>= fun fs -> pure (Import fs)
 
 let cmdeof = eof >> pure Eof
 
-let cmdline = comment   <|> def   <|> macro <|> thm    <|> postulate
-          <|> axm       <|> infer <|> eval  <|> infixr <|> infixl
-          <|> variables <|> cmdeof
+let cmdline = comment   <|> def    <|> macro <|> thm    <|> postulate
+          <|> axm       <|> infer  <|> eval  <|> infixr <|> infixl
+          <|> variables <|> import <|> cmdeof
 
 let cmd = optional ws >> cmdline
 
@@ -216,6 +218,7 @@ and expandBinders c es e =
 
 let rec expandProof = function
   | Atom "?"                                        -> Hole
+  | Atom "trivial"                                  -> Trivial
   | Atom x                                          -> PVar (Ident.ident x)
   | Node (Atom "have" :: Atom x :: Atom ":" :: es0) -> let (t, es1) = splitWhile ((<>) (Atom "=>")) es0 in
                                                        let (e1, es2) = splitWhile ((<>) (Atom "in")) (List.tl es1) in let e2 = List.tl es2 in

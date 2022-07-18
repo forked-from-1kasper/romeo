@@ -20,7 +20,7 @@ let elab      stx = Term.salt Env.empty (expandTerm (macroexpand (unpack stx)))
 let elabProp  stx = Term.saltProp Env.empty (expandProp (macroexpand (unpack stx)))
 let elabProof stx = Term.saltProof Env.empty (expandProof (macroexpand stx))
 
-let perform = function
+let rec perform = function
   | Macro (e1, e2)       -> let vbs   = collectVariables Set.empty e1 in
                             let value = macroexpand (unpack e2) in
                             macros := { variables = vbs; pattern = e1; value = value } :: !macros
@@ -40,10 +40,11 @@ let perform = function
   | Axiom (i, e0)        -> let e = elabProp e0 in checkProp !ctx.term e; upThm (ident i) e
   | Infix (assoc, n, is) -> List.iter (fun i -> operators := Dict.add i (n, assoc) !operators) is
   | Variables is         -> List.iter (fun i -> variables := Set.add i !variables) is
+  | Import fs            -> List.iter checkFile fs
   | Comment _            -> ()
   | Eof                  -> ()
 
-let checkFile filename =
+and checkFile filename =
   let chan  = open_in filename in
   let input = Monad.ofChan chan in
 
@@ -55,5 +56,4 @@ let checkFile filename =
     | Error err   -> Printf.printf "Parse error:\n%s\n" err; eof := true
     | Ok (_, Eof) -> eof := true
     | Ok (n, c)   -> pos := n; (try perform c with err -> print_endline (Pp.showError err))
-  done;
-  close_in chan
+  done; close_in chan; Printf.printf "File “%s” checked.\n" filename

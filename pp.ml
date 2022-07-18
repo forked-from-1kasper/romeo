@@ -41,6 +41,7 @@ and showProp e = ppProp false e
 let rec ppProof paren e =
   let s = match e with
   | Hole                 -> "?"
+  | Trivial              -> "trivial"
   | PVar x               -> showIdent x
   | Absurd e             -> "absurd " ^ ppProof true e
   | Have (x, t, e1, e2)  -> Printf.sprintf "let %s : %s => %s in %s" (showIdent x) (showProp t) (showProof e1) (showProof e2)
