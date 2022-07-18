@@ -16,6 +16,7 @@ type command =
   | Postulate of string list * sexp
   | Theorem   of string * sexp * sexp
   | Axiom     of string * sexp
+  | Macro     of sexp * sexp
   | Def       of sexp * sexp
   | Infix     of associativity * int * string list
   | Variables of string list
@@ -45,8 +46,9 @@ let digits ns = let deg = ref 1 in let m = ref 0 in
 let universe = digits <$> (ch 'U' >> many numSubscript)
 
 let ws             = str (fun c -> c = ' ' || c = '\n' || c = '\t' || c = '\t') >> Monad.eps
-let keywords       = ["definition"; "theorem"; "lemma"; "proposition"; "infixl"; "infixr";
-                      "postulate"; "axiom"; "NB"; "variables"; "#infer"; "#eval"; ":="]
+let keywords       = ["definition"; "macro"; "theorem"; "lemma"; "proposition";
+                      "infixl"; "infixr"; "postulate"; "axiom"; "NB"; "variables";
+                      "#infer"; "#eval"; ":="]
 let reserved       = ['('; ')'; '\n'; '\t'; '\r'; ' '; ',']
 let isReserved   c = List.mem c reserved
 let isntReserved c = not (List.mem c reserved)
@@ -60,9 +62,12 @@ let sexp = fix (fun p -> (node <$> (ch '(' >> optional ws >> many p << ch ')'))
 let sexpToplevel = sexp >>= fun x -> many sexp >>= fun xs ->
   pure (match xs with [] -> x | _ -> Node (x :: xs))
 
-let def = token "definition" >> ws >> sexpToplevel >>=
+let macrodef tok = token tok >> ws >> sexpToplevel >>=
   fun e1 -> optional ws >> token ":=" >> ws >> sexpToplevel >>=
-    fun e2 -> pure (Def (e1, e2))
+    fun e2 -> pure (e1, e2)
+
+let def   = macrodef "definition" >>= fun (e1, e2) -> pure (Def (e1, e2))
+let macro = macrodef "macro"      >>= fun (e1, e2) -> pure (Macro (e1, e2))
 
 let thm = (token "theorem" <|> token "lemma" <|> token "proposition") >> ws >> ident >>=
   fun i -> ws >> token ":" >> ws >> sexpToplevel >>=
@@ -93,14 +98,13 @@ let variables = token "variables" >> ws >> sepBy1 ws ident >>= fun is -> pure (V
 
 let cmdeof = eof >> pure Eof
 
-let cmdline = comment <|> def  <|> thm    <|> postulate <|> axm
-          <|> infer   <|> eval <|> infixr <|> infixl    <|> variables
-          <|> cmdeof
+let cmdline = comment   <|> def   <|> macro <|> thm    <|> postulate
+          <|> axm       <|> infer <|> eval  <|> infixr <|> infixl
+          <|> variables <|> cmdeof
 
 let cmd = optional ws >> cmdline
 
 (* second stage parser *)
-
 let builtinInfix = [
   ",", (1, Binder); "=", (50, Left); "∧", (20, Right); "∨", (30, Right);
   "⊃", (40, Right); "⇒", (40, Right); "∘", (60, Right)
@@ -269,6 +273,16 @@ let rec collectVariables vbs = function
   | Atom x when Set.mem x !variables -> Set.add x vbs
   | Atom _                           -> vbs
   | Node es                          -> List.fold_left collectVariables vbs es
+
+let rec expandDef bs = function
+  | Node (Atom x :: Atom ":" :: es) -> (Atom x, (x, Node es) :: bs)
+  | Node xs                         ->
+    let (ys, bs') =
+      List.fold_left (fun (ys, bs0) e0 ->
+        let (e, bs) = expandDef bs0 e0 in
+          (e :: ys, bs)) ([], bs) xs
+    in (Node (List.rev ys), bs')
+  | e                               -> (e, bs)
 
 let rec findMacro e = function
   | m :: ms ->

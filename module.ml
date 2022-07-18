@@ -1,6 +1,7 @@
 open Parser
 open Check
 open Ident
+open Term
 open Eval
 
 let ctx = ref { term = Env.empty; proof = Env.empty }
@@ -20,9 +21,18 @@ let elabProp  stx = Term.saltProp Env.empty (expandProp (macroexpand (unpack stx
 let elabProof stx = Term.saltProof Env.empty (expandProof (macroexpand stx))
 
 let perform = function
-  | Def (e1, e2)         -> let vbs   = collectVariables Set.empty e1 in
+  | Macro (e1, e2)       -> let vbs   = collectVariables Set.empty e1 in
                             let value = macroexpand (unpack e2) in
                             macros := { variables = vbs; pattern = e1; value = value } :: !macros
+  | Def (e1, e2)         -> let (e, bs) = expandDef [] e1 in
+                            let vbs     = List.map fst bs in
+                            let value   = macroexpand (unpack e2) in
+                            let ctx0    = List.fold_left (fun ctx (s, t0) ->
+                              let i = ident s in let t = elab t0 in ignore (Term.extUniv (check ctx t));
+                              if Env.mem i ctx then raise (VariableAlreadyDeclared i)
+                              else Term.upVar ctx i t) !ctx.term (List.rev bs) in
+                            ignore (check ctx0 (Term.salt Env.empty (expandTerm value)));
+                            macros := { variables = Set.of_list vbs; pattern = e; value = value } :: !macros
   | Postulate (is, e)    -> let t = elab e in ignore (Term.extUniv (check !ctx.term t)); List.iter (fun i -> upGlobal (ident i) t) is
   | Infer e              -> print_endline (Pp.showTerm (check !ctx.term (elab e)))
   | Eval e               -> let t = elab e in ignore (check !ctx.term t); print_endline (Pp.showTerm (eval !ctx.term t))

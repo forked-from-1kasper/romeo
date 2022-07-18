@@ -2,9 +2,9 @@ postulate A B C D : U
 
 variables X Y Z
 
-definition ∘² X := X ∘ X
-definition ∘³ X := X ∘ X ∘ X
-definition ∘⁶ X := ∘² (∘³ X)
+macro ∘² X := X ∘ X
+macro ∘³ X := X ∘ X ∘ X
+macro ∘⁶ X := ∘² (∘³ X)
 
 #infer Hom U₂ U₁ U₁
 
@@ -20,6 +20,9 @@ postulate x y z : A
 
 postulate φ : Hom A x x
 #eval ∘⁶ (φ ∘ φ)
+
+definition ∘⁴ (f : Hom A x x) := f ∘ f ∘ f ∘ f
+#eval ∘⁴ φ
 
 postulate f : Hom A x y
 postulate g : Hom A y z

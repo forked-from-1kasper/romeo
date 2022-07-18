@@ -36,10 +36,11 @@ let app f x          = App    (f, x)
 
 let freshTerm x = Var (freshName x)
 
-exception VariableNotFound of ident
-exception ExpectedUniv     of term
-exception ExpectedHom      of term
-exception Ineq             of term * term
+exception VariableAlreadyDeclared of ident
+exception VariableNotFound        of ident
+exception ExpectedUniv            of term
+exception ExpectedHom             of term
+exception Ineq                    of term * term
 
 exception IneqProp       of prop * prop
 exception ExpectedAnd    of prop
