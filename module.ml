@@ -21,6 +21,8 @@ let elab      stx = Term.salt Env.empty (expandTerm (macroexpand (unpack stx)))
 let elabProp  stx = Term.saltProp Env.empty (expandProp (macroexpand (unpack stx)))
 let elabProof stx = Term.saltProof Env.empty (expandProof (macroexpand stx))
 
+let informCheck d = Printf.printf "Checking: %s\n" d; flush_all ()
+
 let rec perform = function
   | Macro (e1, e2)       -> let vbs   = collectVariables Set.empty e1 in
                             let value = macroexpand (unpack e2) in
@@ -34,11 +36,11 @@ let rec perform = function
                               else Term.upVar ctx i t) !ctx.term (List.rev bs) in
                             ignore (check ctx0 (Term.salt Env.empty (expandTerm value)));
                             macros := { variables = Set.of_list vbs; pattern = e; value = value } :: !macros
-  | Postulate (is, e)    -> let t = elab e in ignore (Term.extUniv (check !ctx.term t)); List.iter (fun i -> upGlobal (ident i) t) is
-  | Infer e              -> print_endline (Pp.showTerm (check !ctx.term (elab e)))
-  | Eval e               -> let t = elab e in ignore (check !ctx.term t); print_endline (Pp.showTerm (eval !ctx.term t))
-  | Theorem (i, e0, p0)  -> let e = elabProp e0 in let p = elabProof p0 in checkProp !ctx.term e; ensure !ctx p e; upThm (ident i) e
-  | Axiom (i, e0)        -> let e = elabProp e0 in checkProp !ctx.term e; upThm (ident i) e
+  | Postulate (is, e)    -> let t = elab e in ignore (Term.extUniv (check !ctx.term t)); List.iter (fun i -> informCheck i; upGlobal (ident i) t) is
+  | Infer e              -> Printf.printf "INFER: %s\n" (Pp.showTerm (check !ctx.term (elab e))); flush_all ()
+  | Eval e               -> let t = elab e in ignore (check !ctx.term t); Printf.printf "EVAL: %s\n" (Pp.showTerm (eval !ctx.term t)); flush_all ()
+  | Theorem (i, e0, p0)  -> informCheck i; let e = elabProp e0 in let p = elabProof p0 in checkProp !ctx.term e; ensure !ctx p e; upThm (ident i) e
+  | Axiom (i, e0)        -> informCheck i; let e = elabProp e0 in checkProp !ctx.term e; upThm (ident i) e
   | Infix (assoc, n, is) -> List.iter (fun i -> operators := Dict.add i (n, assoc) !operators) is
   | Variables is         -> List.iter (fun i -> variables := Set.add i !variables) is
   | Import fs            -> List.iter checkFile fs
@@ -60,4 +62,4 @@ and checkFile filename =
     | Ok (_, Eof) -> eof := true
     | Ok (n, c)   -> pos := n; (try perform c with err -> print_endline (Pp.showError err))
   done; close_in chan; checkedFiles := Set.add filename !checkedFiles;
-  Printf.printf "File “%s” checked.\n" filename
+  Printf.printf "File “%s” checked.\n" filename; flush_all ()
