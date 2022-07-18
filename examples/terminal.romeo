@@ -1,0 +1,30 @@
+variables X Y T
+
+postulate C : U
+
+macro ∃!-Hom X Y :=
+∃! (g : Hom C X Y), ⊤
+
+macro isTerminal T :=
+∀ (X : C), ∃!-Hom X T
+
+infixr 40 ≅
+
+macro X ≅ Y :=
+∃ (f : Hom C X Y) (g : Hom C Y X), (f ∘ g = id Y) ∧ (g ∘ f = id X)
+
+lemma leftId : ∀ (a b : C) (f : Hom C a b), id b ∘ f = f :=
+λ _ _ f, refl f
+
+lemma rightId : ∀ (a b : C) (f : Hom C a b), f ∘ id a = f :=
+λ _ _ f, refl f
+
+lemma compositionIsAssoc : ∀ (a b c d : C) (f : Hom C a b) (g : Hom C b c) (h : Hom C c d), (h ∘ g) ∘ f = h ∘ (g ∘ f) :=
+λ _ _ _ _ f g h, refl (h ∘ g ∘ f)
+
+theorem terminalIsUnique : ∀ (T₁ T₂ : C), isTerminal T₁ ⊃ isTerminal T₂ ⊃ T₁ ≅ T₂ :=
+λ T₁ T₂ G H, exis (ε (g : Hom C T₁ T₂), ⊤) (exis (ε (g : Hom C T₂ T₁), ⊤)
+  (have G′ : ∃!-Hom T₁ T₁ => inst G T₁ in
+   have H′ : ∃!-Hom T₂ T₂ => inst H T₂ in
+    conj (uniq H′ trivial trivial)
+         (uniq G′ trivial trivial)))
