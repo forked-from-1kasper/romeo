@@ -51,7 +51,9 @@ import experiments/test2.romeo experiments/test2.romeo
 lemma lem2 : ∀ (f : Hom A x x), f ∘ f = f ⊃ f ∘ f = f ∘ f ∘ f :=
 λ f H, have H′ : f = f ∘ f => symm H in subst g (f ∘ f = f ∘ g) H′ (refl (f ∘ f))
 
-lemma lem3 : ∀ (f : Hom A x x), ¬ ¬ (f ∘ f = f) ⊃ (f ∘ f = f) :=
+macro ¬¬ X := ¬ (¬ X)
+
+lemma lem3 : ∀ (f : Hom A x x), ¬¬ (f ∘ f = f) ⊃ (f ∘ f = f) :=
 λ f H, ¬¬-elim H
 
 lemma lem4 : ∀ (f : Hom A x x), (f ∘ f = f) ∨ ¬ (f ∘ f = f) :=
