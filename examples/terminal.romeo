@@ -6,10 +6,16 @@ predicate ∃!-Hom (X : C) (Y : C) := ∃! (g : Hom C X Y), ⊤
 predicate isTerminal (T : C) :=
 ∀ (X : C), ∃!-Hom X T
 
-infixr 40 ≅
+infixr 80 ≅
+
+predicate isQinv (X : C) (Y : C) (f : Hom C X Y) (g : Hom C Y X) :=
+(f ∘ g = id Y) ∧ (g ∘ f = id X)
+
+predicate hasQinv (X : C) (Y : C) (f : Hom C X Y) :=
+∃ (g : Hom C Y X), isQinv X Y f g
 
 predicate (X : C) ≅ (Y : C) :=
-∃ (f : Hom C X Y) (g : Hom C Y X), (f ∘ g = id Y) ∧ (g ∘ f = id X)
+∃ (f : Hom C X Y), hasQinv X Y f
 
 lemma leftId : ∀ (a b : C) (f : Hom C a b), id b ∘ f = f :=
 λ _ _ f, refl f
@@ -29,3 +35,28 @@ theorem terminalIsUnique : ∀ (T₁ T₂ : C), isTerminal T₁ ⊃ isTerminal T
      have H″ : ∃!-Hom T₂ T₂ => ∀-elim H T₂ in
      ∧-intro (∃!-uniq H″ trivial trivial)
              (∃!-uniq G″ trivial trivial)))
+
+lemma ≅-refl : ∀ (X : C), X ≅ X :=
+λ X, ∃-intro (id X) (∃-intro (id X) (∧-intro (refl (id X)) (refl (id X))))
+
+lemma ≅-symm : ∀ (X Y : C), X ≅ Y ⊃ Y ≅ X :=
+λ X Y H,
+  have G : hasQinv X Y (ε H) => choice H in
+  have F : isQinv X Y (ε H) (ε G) => choice G in
+  ∃-intro (ε G) (∃-intro (ε H) (∧-intro (∧-pr₂ F) (∧-pr₁ F)))
+
+lemma ≅-trans : ∀ (X Y Z : C), X ≅ Y ⊃ Y ≅ Z ⊃ X ≅ Z :=
+λ X Y Z H G,
+  have H′ : hasQinv X Y (ε H) => choice H in
+  have G′ : hasQinv Y Z (ε G) => choice G in
+
+  have H″ : isQinv X Y (ε H) (ε H′) => choice H′ in
+  have G″ : isQinv Y Z (ε G) (ε G′) => choice G′ in
+
+  have F₁ : id Y = ε H ∘ ε H′ => symm (∧-pr₁ H″) in
+  have F₂ : id Y = ε G′ ∘ ε G => symm (∧-pr₂ G″) in
+
+  ∃-intro (ε G ∘ ε H) (∃-intro (ε H′ ∘ ε G′)
+    (∧-intro
+      (subst g (ε G ∘ g ∘ ε G′ = id Z) F₁ (∧-pr₁ G″))
+      (subst g (ε H′ ∘ g ∘ ε H = id X) F₂ (∧-pr₂ H″))))
