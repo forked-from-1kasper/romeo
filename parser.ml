@@ -33,8 +33,13 @@ let rec replace x e = function
   | Node ys -> Node (List.map (replace x e) ys)
 
 let rec showSExp = function
-  | Node xs -> "(" ^ String.concat " " (List.map showSExp xs) ^ ")"
+  | Node xs -> "(" ^ showSExps xs ^ ")"
   | Atom s  -> s
+and showSExps xs = String.concat " " (List.map showSExp xs)
+
+let extend = function
+  | Node xs -> xs
+  | x       -> [x]
 
 let atom s  = Atom s
 let node xs = Node xs

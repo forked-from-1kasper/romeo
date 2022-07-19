@@ -36,6 +36,7 @@ let rec perform = function
                             let value = macroexpand (unpack e2) in
                             macros := { variables = vbs; pattern = e1; value = value } :: !macros
   | Def (k, e1, e2)      -> let (e, bs) = expandDef [] e1 in
+                            informCheck (showSExps (extend e));
                             let vbs     = List.map fst bs in
                             let value   = macroexpand (unpack e2) in
                             let ctx0    = teleCtx ident elab ctx (List.rev bs) in
