@@ -88,10 +88,10 @@ let sexp = fix (fun p ->
   let atom  = atom <$> ident in
   let comma = ch ',' >> pure (Atom ",") in
   let bra   = fix (fun q ->
-    let el = (node <$> many ((paren <|> atom <|> q) << optional ws))
+    let el = (node <$> many ((atom <|> paren <|> q) << optional ws))
     in ch '[' >> optional ws >> sepBy (ch ',' >> optional ws) el << ch ']' >>=
       fun es -> pure (Node (Atom "LIST" :: es))) in
-  (paren <|> atom <|> comma <|> bra) << optional ws)
+  (atom <|> comma <|> paren <|> bra) << optional ws)
 
 let sexpToplevel = sexp >>= fun x -> many sexp >>= fun xs ->
   pure (match xs with [] -> x | _ -> Node (x :: xs))

@@ -66,13 +66,10 @@ let token s =
   Seq.fold_left (fun x c -> x >> ch c) eps (String.to_seq s)
   |> decorateErrors [s]
 
-let foldr f p b =
-  let rec loop reps = if reps = 0 then failure else (f <$> p <*> loop (reps - 1)) <|> pure b
-  in fun input pos -> loop (input.size - pos + 1) input pos
+(* https://github.com/inhabitedtype/angstrom/blob/5536d1da71469b49f37076beb5f75d34f448da5e/lib/angstrom.ml#L457-L462 *)
+let fix f = let rec p = lazy (f r) and r = fun input pos -> (Lazy.force p) input pos in r
 
-let fix f =
-  let rec loop reps = if reps = 0 then failure else f (loop (reps - 1))
-  in fun input pos -> loop (input.size - pos + 1) input pos
+let foldr f p b = fix (fun g -> f <$> p <*> g <|> pure b)
 
 let optional p = p <|> eps
 
