@@ -35,6 +35,7 @@ let rec perform = function
                               | Prop -> checkProp ctx0 (Term.saltProp Env.empty (expandProp value))
                             end; macros := { variables = Set.of_list vbs; pattern = e; value = value } :: !macros
   | Postulate (is, e)    -> let t = elab e in ignore (Term.extUniv (check ctx t)); List.iter (fun i -> informCheck i; upGlobal ctx.term (ident i) t) is
+  | Macroexpand e        -> Printf.printf "MACROEXPAND: %s\n" (showSExp (macroexpand (unpack e))); flush_all ()
   | Infer e              -> Printf.printf "INFER: %s\n" (Pp.showTerm (check ctx (elab e))); flush_all ()
   | Eval e               -> let t = elab e in ignore (check ctx t); Printf.printf "EVAL: %s\n" (Pp.showTerm (eval ctx t)); flush_all ()
   | Theorem (i, e0, p0)  -> informCheck i; let e = elabProp e0 in let p = elabProof p0 in checkProp ctx e; ensure ctx p e; upGlobal ctx.rho (ident i) e

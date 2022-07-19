@@ -12,17 +12,18 @@ type sexp =
   | Node of sexp list
 
 type command =
-  | Eval      of sexp
-  | Infer     of sexp
-  | Postulate of string list * sexp
-  | Theorem   of string * sexp * sexp
-  | Axiom     of string * sexp
-  | Macro     of sexp * sexp
-  | Def       of kind * sexp * sexp
-  | Infix     of associativity * int * string list
-  | Variables of string list
-  | Import    of string list
-  | Comment   of string
+  | Eval        of sexp
+  | Infer       of sexp
+  | Macroexpand of sexp
+  | Axiom       of string * sexp
+  | Theorem     of string * sexp * sexp
+  | Macro       of sexp * sexp
+  | Def         of kind * sexp * sexp
+  | Postulate   of string list * sexp
+  | Infix       of associativity * int * string list
+  | Variables   of string list
+  | Import      of string list
+  | Comment     of string
   | Eof
 
 let rec replace x e = function
@@ -50,7 +51,7 @@ let universe = digits <$> (ch 'U' >> many numSubscript)
 let ws             = str (fun c -> c = ' ' || c = '\n' || c = '\t' || c = '\t') >> Monad.eps
 let keywords       = ["definition"; "predicate"; "macro"; "theorem"; "lemma";
                       "proposition"; "infixl"; "infixr"; "postulate"; "axiom"; "NB";
-                      "variables"; "#infer"; "#eval"; ":="]
+                      "variables"; "#macroexpand"; "#infer"; "#eval"; ":="]
 let reserved       = ['('; ')'; '\n'; '\t'; '\r'; ' '; ',']
 let isReserved   c = List.mem c reserved
 let isntReserved c = not (List.mem c reserved)
@@ -94,17 +95,18 @@ let comment = token "NB" >> ws >> str (fun c -> c <> '\n' && c <> '\r') >>= fun 
 let postulate = token "postulate" >> ws >> sepBy1 ws (guard ((<>) ":") ident) << ws >>=
   fun is -> token ":" >> ws >> sexpToplevel >>= fun e -> pure (Postulate (is, e))
 
-let infer = debug "#infer" (fun e -> Infer e)
-let eval  = debug "#eval"  (fun e -> Eval e)
+let macroexpand = debug "#macroexpand" (fun e -> Macroexpand e)
+let infer       = debug "#infer"       (fun e -> Infer e)
+let eval        = debug "#eval"        (fun e -> Eval e)
 
 let variables = token "variables" >> ws >> sepBy1 ws ident >>= fun is -> pure (Variables is)
 let import = token "import" >> ws >> sepBy1 ws ident >>= fun fs -> pure (Import fs)
 
 let cmdeof = eof >> pure Eof
 
-let cmdline = comment   <|> def    <|> macro     <|> pred   <|> thm
-          <|> postulate <|> axm    <|> infer     <|> eval   <|> import
-          <|> infixr    <|> infixl <|> variables <|> cmdeof
+let cmdline = comment   <|> def    <|> macro     <|> pred      <|> thm
+          <|> postulate <|> axm    <|> infer     <|> eval      <|> macroexpand
+          <|> import    <|> infixr <|> infixl    <|> variables <|> cmdeof
 
 let cmd = optional ws >> cmdline
 
