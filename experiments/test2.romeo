@@ -1,2 +1,5 @@
 lemma obvious : ⊤ :=
 trivial
+
+lemma obvious′ : ¬ ¬ ¬ ⊥ :=
+λ H, H (λ G, G)

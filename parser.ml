@@ -197,6 +197,7 @@ let rec expandTerm = function
 and expandProp = function
   | Atom "⊤"                                   -> True
   | Atom "⊥"                                   -> False
+  | Node (Atom "¬" :: es)                      -> Impl (expandProp (Node es), False)
   | Node [a; Atom "∧"; b]                      -> And  (expandProp a, expandProp b)
   | Node [a; Atom "∨"; b]                      -> Or   (expandProp a, expandProp b)
   | Node [a; Atom "⊃"; b]                      -> Impl (expandProp a, expandProp b)
@@ -205,6 +206,7 @@ and expandProp = function
   | Node [Node (Atom "∀"  :: es); Atom ","; e] -> expandBinders forall es e
   | Node [Node (Atom "∃"  :: es); Atom ","; e] -> expandBinders exists es e
   | Node [Node (Atom "∃!" :: es); Atom ","; e] -> expandBinders exuniq es e
+  | Node [e]                                   -> expandProp e
   | e                                          -> raise (InvalidSyntax e)
 
 and expandBinder es0 = let (is, es) = splitWhile ((<>) (Atom ":")) es0 in
