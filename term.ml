@@ -136,6 +136,7 @@ type proof =
   | Mp       of ident * proof list                      (* A → B, A ⊢ B *)
   | Inst     of ident * term list        (* ∀ (y : A), B y; x : A ⊢ B x *)
   | Exis     of term * proof                   (* x : A, P x ⊢ ∃ y, P y *)
+  | ExisElim of ident * proof
   | Refl     of term                                           (* a = a *)
   | Symm     of proof                                  (* a = b ⊢ b = a *)
   | Trans    of ident * ident                   (* a = b, b = c ⊢ a = c *)
@@ -165,6 +166,7 @@ let rec saltProof ns = function
   | Mp (x, es)           -> Mp (freshVar ns x, List.map (saltProof ns) es)
   | Inst (x, ts)         -> Inst (freshVar ns x, List.map (salt ns) ts)
   | Exis (t, e)          -> Exis (salt ns t, saltProof ns e)
+  | ExisElim (x, e)      -> ExisElim (freshVar ns x, saltProof ns e)
   | Refl t               -> Refl (salt ns t)
   | Symm e               -> Symm (saltProof ns e)
   | Trans (x, y)         -> Trans (freshVar ns x, freshVar ns y)

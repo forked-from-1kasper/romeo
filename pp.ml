@@ -60,6 +60,7 @@ let rec ppProof paren e =
   | Mp (x, es)           -> Printf.sprintf "%s %s" (showIdent x) (String.concat " " (List.map (ppProof true) es))
   | Inst (x, ts)         -> Printf.sprintf "∀-elim %s %s" (showIdent x) (String.concat " " (List.map (ppTerm true) ts))
   | Exis (t, e)          -> Printf.sprintf "∃-intro %s %s" (ppTerm true t) (ppProof true e)
+  | ExisElim (x, e)      -> Printf.sprintf "∃-elim %s %s" (showIdent x) (ppProof true e)
   | Refl t               -> "refl " ^ ppTerm true t
   | Symm e               -> "symm " ^ ppProof true e
   | Trans (x, y)         -> Printf.sprintf "trans %s %s" (showIdent x) (showIdent y)

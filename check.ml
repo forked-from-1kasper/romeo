@@ -67,6 +67,7 @@ let rec ensure ctx e t = try match e, t with
                                                                                      substProp ctx y (eval ctx e) i) (get ctx x) ts in
                                                  coincide ctx c c0
   | Exis (e, u),          Exists (x, t, i)    -> eqNf ctx (check ctx e) t; ensure ctx u (substProp ctx x (eval ctx e) i)
+  | ExisElim (x, e),      i2                  -> let (i, t, i1) = extExists (get ctx x) in ensure ctx e (Forall (i, t, Impl (i1, i2)))
   | Refl t0,              Eq (t1, t2)         -> let t = eval ctx t0 in eqNf ctx t t1; eqNf ctx t t2
   | Symm u,               Eq (t1, t2)         -> ensure ctx u (Eq (t2, t1))
   | Trans (x, y),         Eq (t1, t2)         -> let (a, b1) = extEq (get ctx x) in let (b2, c) = extEq (get ctx y) in eqNf ctx b1 b2; eqNf ctx a t1; eqNf ctx c t2
