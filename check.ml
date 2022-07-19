@@ -21,7 +21,6 @@ let rec check ctx t = try match t with
   | Hom (t, a, b) -> let c = check ctx t in ignore (extUniv c);
                      eqNf ctx t (infer ctx a); eqNf ctx t (infer ctx b);
                      U (extUniv c)
-  | Eps x         -> let (_, t, _) = extExists (lookup ctx.rho x) in t
   with ex -> Printf.printf "When trying to infer type of\n  %s\n" (Pp.showTerm t); raise ex
 
 and checkAp ctx f x = match check ctx f, check ctx x with
@@ -29,7 +28,7 @@ and checkAp ctx f x = match check ctx f, check ctx x with
   | Hom (U _, c1, c2), c                                -> eqNf ctx c c1; c2
   | t,                 _                                -> raise (ExpectedUniv t)
 
-and checkProp ctx e = try match e with
+let rec checkProp ctx e = try match e with
   | True          -> ()
   | False         -> ()
   | And (a, b)    -> checkProp2 ctx a b
@@ -79,7 +78,6 @@ let rec ensure ctx e t = try match e, t with
   | Symm u,               Eq (t1, t2)         -> ensure ctx u (Eq (t2, t1))
   | Trans (x, y),         Eq (t1, t2)         -> let (a, b1) = extEq (get ctx x) in let (b2, c) = extEq (get ctx y) in eqNf ctx b1 b2; eqNf ctx a t1; eqNf ctx c t2
   | Subst (x, e, p, u),   i                   -> let (a, b) = extEq (get ctx p) in ensure ctx u (substProp1 ctx x a e); coincide ctx (substProp1 ctx x b e) i
-  | Choice i,             i2                  -> let (x, _, i1) = extExists (get ctx i) in coincide ctx (substProp1 ctx x (Eps i) i1) i2
   | Proj u,               Exists (x, t, i)    -> ensure ctx u (ExUniq (x, t, i))
   | ExisUniq (e, u1, u2), ExUniq (x, t, i)    -> eqNf ctx (check ctx e) t; ensure ctx u1 (substProp1 ctx x (eval ctx e) i);
                                                  let y = freshName "σ" in let ctx' = { ctx with term = upLocal ctx.term y t } in

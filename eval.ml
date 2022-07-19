@@ -29,7 +29,6 @@ let rec infer ctx = function
                      Hom (t, a, c)
   | App (f, x)    -> inferAp ctx f x
   | Hom (t, _, _) -> U (extUniv (infer ctx t))
-  | Eps x         -> let (_, t, _) = extExists (lookup ctx.rho x) in t
 
 and inferAp ctx f x =
   let (_, c1, c2) = extHom (infer ctx f) in match infer ctx x with
@@ -46,7 +45,6 @@ and eval ctx = function
   | Com (f, g)    -> com (eval ctx f) (eval ctx g)
   | App (f, x)    -> evalApp ctx (eval ctx f) (eval ctx x)
   | Hom (t, a, b) -> Hom (eval ctx t, eval ctx a, eval ctx b)
-  | Eps x         -> Eps x
 
 and dom ctx g = let (_, t, _) = extHom (infer ctx g) in t
 and cod ctx g = let (_, _, t) = extHom (infer ctx g) in t
@@ -63,7 +61,31 @@ and evalApp ctx f x = let (_, c1, _) = extHom (infer ctx f) in match f, x, infer
   | _,          Id x,       Hom (c2, _, _) when conv ctx c1 c2 -> Id (evalApp ctx f x)
   | _,          _,          _                                  -> App (f, x)
 
-and evalProp ctx = function
+and subst ctx rho = function
+  | U n                      -> U n
+  | Var x when Env.mem x rho -> Env.find x rho
+  | Var y                    -> Var y
+  | Const (y, ts)            -> Const (y, List.map (subst ctx rho) ts)
+  | Dom g                    -> dom ctx (subst ctx rho g)
+  | Cod g                    -> cod ctx (subst ctx rho g)
+  | Id a                     -> Id (subst ctx rho a)
+  | App (f, a)               -> evalApp ctx (subst ctx rho f) (subst ctx rho a)
+  | Com (f, g)               -> com (subst ctx rho f) (subst ctx rho g)
+  | Hom (t, a, b)            -> Hom (subst ctx rho t, subst ctx rho a, subst ctx rho b)
+
+and conv ctx t1 t2 = match t1, t2 with
+  | U n,              U m              -> n = m
+  | Var x,            Var y            -> x = y
+  | Const (x, ts1),   Const (y, ts2)   -> x = y && convList (conv ctx) ts1 ts2
+  | Dom f,            Dom g            -> conv ctx f g
+  | Cod f,            Cod g            -> conv ctx f g
+  | Id x,             Id y             -> conv ctx x y
+  | Com (f1, g1),     Com (f2, g2)     -> conv ctx f1 f2 && conv ctx g1 g2
+  | App (f1, x1),     App (f2, x2)     -> conv ctx f1 f2 && conv ctx x1 x2
+  | Hom (t1, a1, b1), Hom (t2, a2, b2) -> conv ctx t1 t2 && conv ctx a1 a2 && conv ctx b1 b2
+  | _,                _                -> false
+
+let rec evalProp ctx = function
   | True        -> True
   | False       -> False
   | And (a, b)  -> And (evalProp ctx a, evalProp ctx b)
@@ -76,19 +98,6 @@ and evalProp ctx = function
 
 and evalBinder c ctx (x, t, e) = let t' = eval ctx t in
   c (x, t', evalProp { ctx with term = upLocal ctx.term x t' } e)
-
-and subst ctx rho = function
-  | U n                      -> U n
-  | Var x when Env.mem x rho -> Env.find x rho
-  | Var y                    -> Var y
-  | Const (y, ts)            -> Const (y, List.map (subst ctx rho) ts)
-  | Dom g                    -> dom ctx (subst ctx rho g)
-  | Cod g                    -> cod ctx (subst ctx rho g)
-  | Id a                     -> Id (subst ctx rho a)
-  | App (f, a)               -> evalApp ctx (subst ctx rho f) (subst ctx rho a)
-  | Com (f, g)               -> com (subst ctx rho f) (subst ctx rho g)
-  | Hom (t, a, b)            -> Hom (subst ctx rho t, subst ctx rho a, subst ctx rho b)
-  | Eps x                    -> Eps x
 
 and substProp ctx rho = function
   | True          -> True
@@ -105,21 +114,7 @@ and substClos ctor ctx rho (x, t, i) =
   if Env.mem x rho then ctor (x, t, i)
   else ctor (x, subst ctx rho t, substProp ctx rho i)
 
-and subst1     ctx x e = subst     ctx (Env.add x e Env.empty)
 and substProp1 ctx x e = substProp ctx (Env.add x e Env.empty)
-
-and conv ctx t1 t2 = match t1, t2 with
-  | U n,              U m              -> n = m
-  | Var x,            Var y            -> x = y
-  | Const (x, ts1),   Const (y, ts2)   -> x = y && convList (conv ctx) ts1 ts2
-  | Dom f,            Dom g            -> conv ctx f g
-  | Cod f,            Cod g            -> conv ctx f g
-  | Id x,             Id y             -> conv ctx x y
-  | Com (f1, g1),     Com (f2, g2)     -> conv ctx f1 f2 && conv ctx g1 g2
-  | App (f1, x1),     App (f2, x2)     -> conv ctx f1 f2 && conv ctx x1 x2
-  | Hom (t1, a1, b1), Hom (t2, a2, b2) -> conv ctx t1 t2 && conv ctx a1 a2 && conv ctx b1 b2
-  | Eps x,            Eps y            -> x = y
-  | _,                _                -> false
 
 and convProp ctx e1 e2 = match e1, e2 with
   | True,             True             -> true
@@ -135,5 +130,7 @@ and convProp ctx e1 e2 = match e1, e2 with
 
 and convClos ctx (x, t1, i1) (y, t2, i2) = conv ctx t1 t2 &&
   let c = freshTerm "σ" in convProp ctx (substProp1 ctx x c i1) (substProp1 ctx y c i2)
+
+let subst1 ctx x e = subst ctx (Env.add x e Env.empty)
 
 let eqNf ctx t1 t2 = if not (conv ctx t1 t2) then raise (Ineq (t1, t2))

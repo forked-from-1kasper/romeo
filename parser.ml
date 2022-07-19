@@ -211,12 +211,11 @@ let rec expandTerm = function
   | Node [Atom "id"; x]                        -> Id  (expandTerm x)
   | Node [f; Atom "∘"; g]                      -> Com (expandTerm f, expandTerm g)
   | Node [Atom "Hom"; t; a; b]                 -> Hom (expandTerm t, expandTerm a, expandTerm b)
-  | Node [Atom "ε"; Atom x]                    -> Eps (Ident.ident x)
   | Node [Atom x; Node (Atom "LIST" :: xs)]    -> Const (Ident.ident x, List.map expandTerm xs)
   | Node (f :: xs)                             -> List.fold_left Term.app (expandTerm f) (List.map expandTerm xs)
   | e                                          -> raise (InvalidSyntax e)
 
-and expandProp = function
+let rec expandProp = function
   | Atom "⊤"                                   -> True
   | Atom "⊥"                                   -> False
   | Node (Atom "¬" :: es)                      -> neg  (expandProp (Node es))
@@ -319,7 +318,6 @@ let rec expandProof = function
   | Node [Atom "symm"; x]                           -> Symm (expandProof x)
   | Node [Atom "trans"; Atom x; Atom y]             -> Trans (Ident.ident x, Ident.ident y)
   | Node [Atom "subst"; Atom x; e1; Atom y; e2]     -> Subst (Ident.ident x, expandProp (unpack e1), Ident.ident y, expandProof e2)
-  | Node [Atom "choice"; Atom x]                    -> Choice (Ident.ident x)
   | Node [Atom "∃!-intro"; t; e1; e2]               -> ExisUniq (expandTerm (unpack t), expandProof e1, expandProof e2)
   | Node [Atom "∃!-uniq"; Atom i; e1; e2]           -> Uniq (Ident.ident i, expandProof e1, expandProof e2)
   | Node [Atom "∃!→∃"; x]                           -> Proj (expandProof x)

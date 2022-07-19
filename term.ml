@@ -14,9 +14,8 @@ type term =
   | Com    of term * term
   | App    of term * term
   | Hom    of term * term * term
-  | Eps    of ident
 
-and prop =
+type prop =
   | True
   | False
   | And    of prop * prop
@@ -110,9 +109,8 @@ let rec salt ns = function
   | Com (g, f)       -> Com (salt ns g, salt ns f)
   | App (f, x)       -> App (salt ns f, salt ns x)
   | Hom (t, a, b)    -> Hom (salt ns t, salt ns a, salt ns b)
-  | Eps x            -> Eps (freshVar ns x)
 
-and saltProp ns = function
+let rec saltProp ns = function
   | True             -> True
   | False            -> False
   | And (a, b)       -> And (saltProp ns a, saltProp ns b)
@@ -144,7 +142,6 @@ type proof =
   | Symm     of proof                                  (* a = b ⊢ b = a *)
   | Trans    of ident * ident                   (* a = b, b = c ⊢ a = c *)
   | Subst    of ident * prop * ident * proof      (* a = b, P(a) ⊢ P(b) *)
-  | Choice   of ident                     (* H : ∃ x, P x ⊢ P(ε x, P x) *)
   | ExisUniq of term * proof * proof
   | Uniq     of ident * proof * proof
   | Proj     of proof
@@ -174,7 +171,6 @@ let rec saltProof ns = function
   | Symm e               -> Symm (saltProof ns e)
   | Trans (x, y)         -> Trans (freshVar ns x, freshVar ns y)
   | Subst (x, e, p, u)   -> let y = fresh x in Subst (y, saltProp (Env.add x y ns) e, freshVar ns p, saltProof ns u)
-  | Choice x             -> Choice (freshVar ns x)
   | ExisUniq (t, e1, e2) -> ExisUniq (salt ns t, saltProof ns e1, saltProof ns e2)
   | Uniq (i, e1, e2)     -> Uniq (freshVar ns i, saltProof ns e1, saltProof ns e2)
   | Proj x               -> Proj (saltProof ns x)

@@ -21,10 +21,10 @@ let rec ppTerm paren t =
   | Com (g, f)    -> Printf.sprintf "%s ∘ %s" (showTerm g) (showTerm f)
   | App (f, x)    -> Printf.sprintf "%s %s" (ppTerm true f) (ppTerm true x)
   | Hom (t, a, b) -> Printf.sprintf "Hom %s %s %s" (ppTerm true t) (ppTerm true a) (ppTerm true b)
-  | Eps x         -> Printf.sprintf "ε %s" (showIdent x)
   in match t with U _ | Var _ -> s | _ -> parens paren s
+and showTerm t = ppTerm false t
 
-and ppProp paren e =
+let rec ppProp paren e =
   let s = match e with
   | True             -> "⊤"
   | False            -> "⊥"
@@ -36,8 +36,6 @@ and ppProp paren e =
   | Exists (i, t, e) -> Printf.sprintf "∃ (%s : %s), %s"  (showIdent i) (showTerm t) (showProp e)
   | ExUniq (i, t, e) -> Printf.sprintf "∃! (%s : %s), %s" (showIdent i) (showTerm t) (showProp e)
   in match e with True | False -> s | _ -> parens paren s
-
-and showTerm t = ppTerm false t
 and showProp e = ppProp false e
 
 let showCtx show ctx =
@@ -67,7 +65,6 @@ let rec ppProof paren e =
   | Symm e               -> "symm " ^ ppProof true e
   | Trans (x, y)         -> Printf.sprintf "trans %s %s" (showIdent x) (showIdent y)
   | Subst (x, e, p, u)   -> Printf.sprintf "subst %s %s %s %s" (showIdent x) (ppProp true e) (showIdent p) (ppProof true u)
-  | Choice x             -> "choice " ^ showIdent x
   | ExisUniq (t, e1, e2) -> Printf.sprintf "∃!-intro %s %s %s" (ppTerm true t) (ppProof true e1) (ppProof true e2)
   | Uniq (i, e1, e2)     -> Printf.sprintf "∃!-uniq %s %s %s" (showIdent i) (ppProof true e1) (ppProof true e2)
   | Proj e               -> "∃!→∃ " ^ ppProof true e
