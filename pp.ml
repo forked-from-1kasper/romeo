@@ -68,6 +68,8 @@ let rec ppProof paren e =
   | ExisUniq (t, e1, e2) -> Printf.sprintf "∃!-intro %s %s %s" (ppTerm true t) (ppProof true e1) (ppProof true e2)
   | Uniq (i, e1, e2)     -> Printf.sprintf "∃!-uniq %s %s %s" (showIdent i) (ppProof true e1) (ppProof true e2)
   | Proj e               -> "∃!→∃ " ^ ppProof true e
+  | Lem (e, u1, u2)      -> Printf.sprintf "lem %s %s %s" (ppProp true e) (ppProof true u1) (ppProof true u2)
+  | DnegElim e           -> "¬¬-elim " ^ ppProof true e
   in match e with Hole | PVar _ -> s | _ -> parens paren s
 
 and showProof e = ppProof false e

@@ -28,6 +28,8 @@ and prop =
 
 and clos = ident * term * prop
 
+let neg e = Impl (e, False)
+
 let forall (x, t, i) = Forall (x, t, i)
 let exists (x, t, i) = Exists (x, t, i)
 let exuniq (x, t, i) = ExUniq (x, t, i)
@@ -142,6 +144,8 @@ type proof =
   | ExisUniq of term * proof * proof
   | Uniq     of ident * proof * proof
   | Proj     of proof
+  | Lem      of prop * proof * proof
+  | DnegElim of proof
 
 exception CheckError of proof * prop
 
@@ -169,3 +173,5 @@ let rec saltProof ns = function
   | ExisUniq (t, e1, e2) -> ExisUniq (salt ns t, saltProof ns e1, saltProof ns e2)
   | Uniq (i, e1, e2)     -> Uniq (freshVar ns i, saltProof ns e1, saltProof ns e2)
   | Proj x               -> Proj (saltProof ns x)
+  | Lem (e, u1, u2)      -> Lem (saltProp ns e, saltProof ns u1, saltProof ns u2)
+  | DnegElim e           -> DnegElim (saltProof ns e)

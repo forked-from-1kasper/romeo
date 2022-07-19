@@ -81,5 +81,8 @@ let rec ensure ctx e t = try match e, t with
                                                  eqNf ctx (check ctx t2) t;
                                                  ensure ctx e1 (substProp ctx x t1 e);
                                                  ensure ctx e2 (substProp ctx x t2 e)
-  | _,                        _               -> raise (CheckError (e, t))
+  | Lem (i1, u1, u2),     i2                  -> ensure ctx u1 (Impl (i1, i2));
+                                                 ensure ctx u2 (Impl (neg i1, i2))
+  | DnegElim e,           _                   -> ensure ctx e (neg (neg t))
+  | _,                    _                   -> raise (CheckError (e, t))
   with ex -> Printf.printf "When trying to typecheck\n  %s\nAgainst type\n  %s\n" (Pp.showProof e) (Pp.showProp t); raise ex

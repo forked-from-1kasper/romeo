@@ -199,7 +199,7 @@ let rec expandTerm = function
 and expandProp = function
   | Atom "⊤"                                   -> True
   | Atom "⊥"                                   -> False
-  | Node (Atom "¬" :: es)                      -> Impl (expandProp (Node es), False)
+  | Node (Atom "¬" :: es)                      -> neg  (expandProp (Node es))
   | Node [a; Atom "∧"; b]                      -> And  (expandProp a, expandProp b)
   | Node [a; Atom "∨"; b]                      -> Or   (expandProp a, expandProp b)
   | Node [a; Atom "⊃"; b]                      -> Impl (expandProp a, expandProp b)
@@ -302,6 +302,8 @@ let rec expandProof = function
   | Node [Atom "∃!-intro"; t; e1; e2]               -> ExisUniq (expandTerm (unpack t), expandProof e1, expandProof e2)
   | Node [Atom "∃!-uniq"; Atom i; e1; e2]           -> Uniq (Ident.ident i, expandProof e1, expandProof e2)
   | Node [Atom "∃!→∃"; x]                           -> Proj (expandProof x)
+  | Node [Atom "lem"; e; u1; u2]                    -> Lem (expandProp (unpack e), expandProof u1, expandProof u2)
+  | Node [Atom "¬¬-elim"; e]                        -> DnegElim (expandProof e)
   | Node (Atom "∀-elim" :: Atom x :: ts)            -> Inst (Ident.ident x, List.map (expandTerm % unpack) ts)
   | Node (Atom x :: y :: ys)                        -> Mp (Ident.ident x, List.map expandProof (y :: ys))
   | Node [e]                                        -> expandProof e
