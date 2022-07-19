@@ -1,3 +1,4 @@
+open Prelude
 open Monad
 open Term
 
@@ -19,7 +20,8 @@ type command =
   | Theorem     of string * sexp * sexp
   | Macro       of sexp * sexp
   | Def         of kind * sexp * sexp
-  | Postulate   of string list * sexp
+  | Constant    of string * sexp list * sexp
+  | Constants   of string list * sexp
   | Infix       of associativity * int * string list
   | Variables   of string list
   | Import      of string list
@@ -37,6 +39,24 @@ let rec showSExp = function
 let atom s  = Atom s
 let node xs = Node xs
 
+let splitWhile p =
+  let rec go ls = function
+    | x :: xs when p x -> go (x :: ls) xs
+    | xs               -> List.rev ls, xs
+  in go []
+
+exception InvalidSyntax of sexp
+exception ExpectedIdent of sexp
+exception ExpectedNode  of sexp
+
+let expandIdent = function
+  | Atom x -> Ident.ident x
+  | e      -> raise (ExpectedIdent e)
+
+let expandNode = function
+  | Node es -> es
+  | e       -> raise (ExpectedNode e)
+
 (* first stage parser *)
 let numSubscript =
   ["₀"; "₁"; "₂"; "₃"; "₄"; "₅"; "₆"; "₇"; "₈"; "₉"]
@@ -49,18 +69,24 @@ let digits ns = let deg = ref 1 in let m = ref 0 in
 let universe = digits <$> (ch 'U' >> many numSubscript)
 
 let ws             = str (fun c -> c = ' ' || c = '\n' || c = '\t' || c = '\t') >> Monad.eps
-let keywords       = ["definition"; "predicate"; "macro"; "theorem"; "lemma";
+let keywords       = [":="; "definition"; "predicate"; "macro"; "theorem"; "lemma";
                       "proposition"; "infixl"; "infixr"; "postulate"; "axiom"; "NB";
-                      "variables"; "#macroexpand"; "#infer"; "#eval"; ":="]
-let reserved       = ['('; ')'; '\n'; '\t'; '\r'; ' '; ',']
+                      "variables"; "constant"; "constants"; "#macroexpand"; "#infer"; "#eval"]
+let reserved       = ['('; ')'; '['; ']'; '\n'; '\t'; '\r'; ' '; ',']
 let isReserved   c = List.mem c reserved
 let isntReserved c = not (List.mem c reserved)
 let isntKeyword  s = not (List.mem s keywords)
 
 let ident = decorateErrors ["ident"] (guard isntKeyword (str isntReserved))
-let sexp = fix (fun p -> (node <$> (ch '(' >> optional ws >> many p << ch ')'))
-                     <|> (ch ',' >> pure (Atom ","))
-                     <|> (atom <$> ident) << optional ws)
+let sexp = fix (fun p ->
+  let paren = node <$> (ch '(' >> optional ws >> many p << ch ')') in
+  let atom  = atom <$> ident in
+  let comma = ch ',' >> pure (Atom ",") in
+  let bra   = fix (fun q ->
+    let el = (node <$> many ((paren <|> atom <|> q) << optional ws))
+    in ch '[' >> optional ws >> sepBy (ch ',' >> optional ws) el << ch ']' >>=
+      fun es -> pure (Node (Atom "LIST" :: es))) in
+  (paren <|> atom <|> comma <|> bra) << optional ws)
 
 let sexpToplevel = sexp >>= fun x -> many sexp >>= fun xs ->
   pure (match xs with [] -> x | _ -> Node (x :: xs))
@@ -78,7 +104,7 @@ let thm = (token "theorem" <|> token "lemma" <|> token "proposition") >> ws >> i
     fun e1 -> token ":=" >> ws >> sexpToplevel >>=
       fun e2 -> pure (Theorem (i, e1, e2))
 
-let axm = token "axiom" >> ws >> ident >>= fun i ->
+let axm = (token "axiom" <|> token "postulate") >> ws >> ident >>= fun i ->
   ws >> token ":" >> ws >> sexpToplevel >>= fun e ->
     pure (Axiom (i, e))
 
@@ -92,8 +118,13 @@ let debug ident fn = token ident >> ws >> sexpToplevel >>= fun e -> pure (fn e)
 
 let comment = token "NB" >> ws >> str (fun c -> c <> '\n' && c <> '\r') >>= fun s -> optional ws >> pure (Comment s)
 
-let postulate = token "postulate" >> ws >> sepBy1 ws (guard ((<>) ":") ident) << ws >>=
-  fun is -> token ":" >> ws >> sexpToplevel >>= fun e -> pure (Postulate (is, e))
+let constant = token "constant" >> ws >> ident << ws >>=
+  fun i -> sexpToplevel >>= fun e0 ->
+    let (e, e1) = splitWhile ((<>) (Atom ":")) (expandNode e0)
+      in pure (Constant (i, e, Node (List.tl e1)))
+
+let constants = token "constants" >> ws >> sepBy1 ws (guard ((<>) ":") ident) << ws >>=
+  fun is -> token ":" >> ws >> sexpToplevel >>= fun e -> pure (Constants (is, e))
 
 let macroexpand = debug "#macroexpand" (fun e -> Macroexpand e)
 let infer       = debug "#infer"       (fun e -> Infer e)
@@ -104,9 +135,10 @@ let import = token "import" >> ws >> sepBy1 ws ident >>= fun fs -> pure (Import 
 
 let cmdeof = eof >> pure Eof
 
-let cmdline = comment   <|> def    <|> macro     <|> pred      <|> thm
-          <|> postulate <|> axm    <|> infer     <|> eval      <|> macroexpand
-          <|> import    <|> infixr <|> infixl    <|> variables <|> cmdeof
+let cmdline = comment  <|> def       <|> macro  <|> pred      <|> thm
+          <|> constant <|> constants <|> axm    <|> infer     <|> eval
+          <|> import   <|> infixr    <|> infixl <|> variables <|> macroexpand
+          <|> cmdeof
 
 let cmd = optional ws >> cmdline
 
@@ -118,12 +150,6 @@ let builtinInfix = [
 let operators = ref (Dict.of_seq (List.to_seq builtinInfix))
 
 (* From: https://rosettacode.org/wiki/Parsing/Shunting-yard_algorithm#OCaml *)
-let splitWhile p =
-  let rec go ls = function
-    | x :: xs when p x -> go (x :: ls) xs
-    | xs               -> List.rev ls, xs
-  in go []
-
 let operator op =
   match Dict.find_opt op !operators with
   | Some e -> e
@@ -166,24 +192,12 @@ and unpack = function
   | Atom x  -> Atom x
   | Node xs -> shuntingyard xs
 
-exception InvalidSyntax of sexp
-exception ExpectedIdent of sexp
-exception ExpectedNode  of sexp
-
 let rec ofNat n = if n <= 0 then Zero else Succ (ofNat (n - 1))
 
 let expandVar x =
   match runParser universe (ofString x) 0 with
   | Ok (_, n) -> U (ofNat n)
   | Error _   -> Var (Ident.ident x)
-
-let expandIdent = function
-  | Atom x -> Ident.ident x
-  | e      -> raise (ExpectedIdent e)
-
-let expandNode = function
-  | Node es -> es
-  | e       -> raise (ExpectedNode e)
 
 let rec expandTerm = function
   | Atom x                                     -> expandVar x
@@ -193,6 +207,7 @@ let rec expandTerm = function
   | Node [f; Atom "∘"; g]                      -> Com (expandTerm f, expandTerm g)
   | Node [Atom "Hom"; t; a; b]                 -> Hom (expandTerm t, expandTerm a, expandTerm b)
   | Node [Atom "ε"; Atom x]                    -> Eps (Ident.ident x)
+  | Node [Atom x; Node (Atom "LIST" :: xs)]    -> Const (Ident.ident x, List.map expandTerm xs)
   | Node (f :: xs)                             -> List.fold_left Term.app (expandTerm f) (List.map expandTerm xs)
   | e                                          -> raise (InvalidSyntax e)
 

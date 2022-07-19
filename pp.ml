@@ -13,6 +13,8 @@ let rec ppTerm paren t =
   let s = match t with
   | U n           -> "U" ^ showSubscript (toInt64 n)
   | Var x         -> showIdent x
+  | Const (x, []) -> showIdent x
+  | Const (x, ts) -> showIdent x ^ "[" ^ String.concat ", " (List.map showTerm ts) ^ "]"
   | Dom g         -> "dom " ^ ppTerm true g
   | Cod g         -> "cod " ^ ppTerm true g
   | Id x          -> "id " ^ ppTerm true x
@@ -80,6 +82,7 @@ let typeMismatch = Printf.sprintf "Type mismatch:\n  %s\nis not equal to\n  %s"
 let showError = function
   | VariableAlreadyDeclared x -> Printf.sprintf "Variable “%s” is already declared." (showIdent x)
   | VariableNotFound x        -> Printf.sprintf "Unbound variable “%s”." (showIdent x)
+  | InvalidArity (i, n, m)    -> Printf.sprintf "Constant “%s” expects %d argument(s), while %d given." (showIdent i) n m
   | ExpectedUniv t            -> Printf.sprintf "“%s” expected to be a universe." (showTerm t)
   | ExpectedHom t             -> Printf.sprintf "“%s” expected to be Hom." (showTerm t)
   | ExpectedAnd e             -> Printf.sprintf "“%s” expected to be a conjunction." (showProp e)

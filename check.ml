@@ -5,6 +5,13 @@ open Term
 let rec check ctx t = try match t with
   | U n           -> U (Succ n)
   | Var x         -> lookup ctx.term x
+  | Const (x, es) -> let (ts, t) = lookup ctx.constant x in
+                     let n = List.length es in let m = List.length ts in
+                     if n <> m then raise (InvalidArity (x, m, n))
+                     else let rho = List.fold_left2 (fun rho0 (i, t0) e ->
+                       let t = subst ctx rho0 t0 in eqNf ctx (check ctx e) t;
+                       Env.add i e rho0) Env.empty ts es
+                     in subst ctx rho t
   | Dom g | Cod g -> let (t, _, _) = extHom (check ctx g) in t
   | Id x          -> Hom (check ctx x, x, x)
   | Com (g, f)    -> let (t1, b1, c) = extHom (check ctx g) in
@@ -61,27 +68,27 @@ let rec ensure ctx e t = try match e, t with
   | Right u,              Or (_, t)           -> ensure ctx u t
   | Disj (u1, u2),        Impl (Or (a, b), c) -> ensure ctx u1 (Impl (a, c)); ensure ctx u2 (Impl (b, c))
   | Lam (x, u),           Impl (a, b)         -> ensure { ctx with rho = upLocal ctx.rho x a } u b
-  | Lam (x, u),           Forall (y, t, i)    -> ensure { ctx with term = upLocal ctx.term x t } u (substProp ctx y (Var x) i)
+  | Lam (x, u),           Forall (y, t, i)    -> ensure { ctx with term = upLocal ctx.term x t } u (substProp1 ctx y (Var x) i)
   | Mp (x, es),           c0                  -> let c = List.fold_left (fun t e -> let (a, b) = extImpl t in ensure ctx e a; b) (get ctx x) es in coincide ctx c c0
   | Inst (x, ts),         c0                  -> let c = List.fold_left (fun t0 e -> let (y, t, i) = extForall t0 in eqNf ctx (check ctx e) t;
-                                                                                     substProp ctx y (eval ctx e) i) (get ctx x) ts in
+                                                                                     substProp1 ctx y (eval ctx e) i) (get ctx x) ts in
                                                  coincide ctx c c0
-  | Exis (e, u),          Exists (x, t, i)    -> eqNf ctx (check ctx e) t; ensure ctx u (substProp ctx x (eval ctx e) i)
+  | Exis (e, u),          Exists (x, t, i)    -> eqNf ctx (check ctx e) t; ensure ctx u (substProp1 ctx x (eval ctx e) i)
   | ExisElim (x, e),      i2                  -> let (i, t, i1) = extExists (get ctx x) in ensure ctx e (Forall (i, t, Impl (i1, i2)))
   | Refl t0,              Eq (t1, t2)         -> let t = eval ctx t0 in eqNf ctx t t1; eqNf ctx t t2
   | Symm u,               Eq (t1, t2)         -> ensure ctx u (Eq (t2, t1))
   | Trans (x, y),         Eq (t1, t2)         -> let (a, b1) = extEq (get ctx x) in let (b2, c) = extEq (get ctx y) in eqNf ctx b1 b2; eqNf ctx a t1; eqNf ctx c t2
-  | Subst (x, e, p, u),   i                   -> let (a, b) = extEq (get ctx p) in ensure ctx u (substProp ctx x a e); coincide ctx (substProp ctx x b e) i
-  | Choice i,             i2                  -> let (x, _, i1) = extExists (get ctx i) in coincide ctx (substProp ctx x (Eps i) i1) i2
+  | Subst (x, e, p, u),   i                   -> let (a, b) = extEq (get ctx p) in ensure ctx u (substProp1 ctx x a e); coincide ctx (substProp1 ctx x b e) i
+  | Choice i,             i2                  -> let (x, _, i1) = extExists (get ctx i) in coincide ctx (substProp1 ctx x (Eps i) i1) i2
   | Proj u,               Exists (x, t, i)    -> ensure ctx u (ExUniq (x, t, i))
-  | ExisUniq (e, u1, u2), ExUniq (x, t, i)    -> eqNf ctx (check ctx e) t; ensure ctx u1 (substProp ctx x (eval ctx e) i);
+  | ExisUniq (e, u1, u2), ExUniq (x, t, i)    -> eqNf ctx (check ctx e) t; ensure ctx u1 (substProp1 ctx x (eval ctx e) i);
                                                  let y = freshName "σ" in let ctx' = { ctx with term = upLocal ctx.term y t } in
-                                                 ensure ctx u2 (Forall (y, t, Impl (substProp ctx' x (Var y) i, Eq (e, Var y))))
+                                                 ensure ctx u2 (Forall (y, t, Impl (substProp1 ctx' x (Var y) i, Eq (e, Var y))))
   | Uniq (i, e1, e2),     Eq (t1, t2)         -> let (x, t, e) = extExUniq (get ctx i) in
                                                  eqNf ctx (check ctx t1) t;
                                                  eqNf ctx (check ctx t2) t;
-                                                 ensure ctx e1 (substProp ctx x t1 e);
-                                                 ensure ctx e2 (substProp ctx x t2 e)
+                                                 ensure ctx e1 (substProp1 ctx x t1 e);
+                                                 ensure ctx e2 (substProp1 ctx x t2 e)
   | Lem (i1, u1, u2),     i2                  -> ensure ctx u1 (Impl (i1, i2));
                                                  ensure ctx u2 (Impl (neg i1, i2))
   | DnegElim e,           _                   -> ensure ctx e (neg (neg t))

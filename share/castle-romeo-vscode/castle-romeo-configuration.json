@@ -1,9 +1,11 @@
 {
     "brackets": [
-        ["(", ")"]
+        ["(", ")"],
+        ["[", "]"]
     ],
     "surroundingPairs": [
-        ["(", ")"]
+        ["(", ")"],
+        ["[", "]"]
     ],
     "folding": {
         "offSide": true,

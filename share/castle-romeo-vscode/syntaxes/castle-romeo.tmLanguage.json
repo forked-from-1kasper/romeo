@@ -5,7 +5,7 @@
     ],
     "patterns": [
         {
-            "match": "(?<=^|[\\s()])(NB|import|postulate|definition|predicate|macro|theorem|lemma|proposition|axiom|variables|infixr|infixl|#eval|#infer|#macroexpand|have|in)(?=$|[\\s()])",
+            "match": "(?<=^|[\\s()])(NB|import|constant|constants|definition|predicate|macro|theorem|lemma|proposition|postulate|axiom|variables|infixr|infixl|#eval|#infer|#macroexpand|have|in)(?=$|[\\s()])",
             "name": "keyword.other.castle-romeo"
         },
         {

@@ -1,4 +1,4 @@
-postulate C : U
+constants C : U
 
 predicate ∃-Hom  (X : C) (Y : C) := ∃  (g : Hom C X Y), ⊤
 predicate ∃!-Hom (X : C) (Y : C) := ∃! (g : Hom C X Y), ⊤

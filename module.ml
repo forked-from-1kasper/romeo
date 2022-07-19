@@ -1,3 +1,4 @@
+open Prelude
 open Parser
 open Check
 open Ident
@@ -5,7 +6,7 @@ open Term
 open Eval
 
 let checkedFiles = ref Set.empty
-let ctx = { term = alloc (); rho = alloc () }
+let ctx = { term = alloc (); rho = alloc (); constant = alloc () }
 
 let ppAlreadyDeclared x = Printf.printf "Variable “%s” is already declared.\n" (Pp.showIdent x)
 
@@ -17,6 +18,17 @@ let elab      stx = Term.salt Env.empty (expandTerm (macroexpand (unpack stx)))
 let elabProp  stx = Term.saltProp Env.empty (expandProp (macroexpand (unpack stx)))
 let elabProof stx = Term.saltProof Env.empty (expandProof (macroexpand stx))
 
+let elabBinder stx = let (is, es) = splitWhile ((<>) (Atom ":")) stx in
+  let e = elab (Node (List.tl es)) in List.map (fun i -> (expandIdent i, e)) is
+
+let elabBinders stxs = List.concat (List.map (elabBinder % expandNode) stxs)
+
+let teleCtx f g =
+  List.fold_left (fun ctx (s, t0) ->
+    let i = f s in let t = g t0 in ignore (Term.extUniv (check ctx t));
+    if Env.mem i ctx.term.local then raise (VariableAlreadyDeclared i)
+    else { ctx with term = Term.upLocal ctx.term i t })
+
 let informCheck d = Printf.printf "Checking: %s\n" d; flush_all ()
 
 let rec perform = function
@@ -26,15 +38,17 @@ let rec perform = function
   | Def (k, e1, e2)      -> let (e, bs) = expandDef [] e1 in
                             let vbs     = List.map fst bs in
                             let value   = macroexpand (unpack e2) in
-                            let ctx0    = List.fold_left (fun ctx (s, t0) ->
-                              let i = ident s in let t = elab t0 in ignore (Term.extUniv (check ctx t));
-                              if Env.mem i ctx.term.local then raise (VariableAlreadyDeclared i)
-                              else { ctx with term = Term.upLocal ctx.term i t }) ctx (List.rev bs) in
+                            let ctx0    = teleCtx ident elab ctx (List.rev bs) in
                             begin match k with
                               | Term -> ignore (check ctx0 (Term.salt Env.empty (expandTerm value)))
                               | Prop -> checkProp ctx0 (Term.saltProp Env.empty (expandProp value))
                             end; macros := { variables = Set.of_list vbs; pattern = e; value = value } :: !macros
-  | Postulate (is, e)    -> let t = elab e in ignore (Term.extUniv (check ctx t)); List.iter (fun i -> informCheck i; upGlobal ctx.term (ident i) t) is
+  | Constants (is, e)    -> let t = elab e in ignore (Term.extUniv (check ctx t)); List.iter (fun i -> informCheck i; upGlobal ctx.term (ident i) t) is
+  | Constant (i, es, t0) -> let t    = elab t0 in
+                            let bs   = elabBinders es in
+                            let ctx0 = teleCtx idfun idfun ctx bs in
+                            ignore (Term.extUniv (check ctx0 t));
+                            upGlobal ctx.constant (ident i) (bs, t)
   | Macroexpand e        -> Printf.printf "MACROEXPAND: %s\n" (showSExp (macroexpand (unpack e))); flush_all ()
   | Infer e              -> Printf.printf "INFER: %s\n" (Pp.showTerm (check ctx (elab e))); flush_all ()
   | Eval e               -> let t = elab e in ignore (check ctx t); Printf.printf "EVAL: %s\n" (Pp.showTerm (eval ctx t)); flush_all ()

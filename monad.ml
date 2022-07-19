@@ -1,6 +1,6 @@
-(* https://github.com/leanprover-community/lean/blob/master/library/data/buffer/parser.lean *)
+open Prelude
 
-let (%) f g = fun x -> f (g x)
+(* https://github.com/leanprover-community/lean/blob/master/library/data/buffer/parser.lean *)
 
 type 'a parserResult =
   | Done of int * 'a

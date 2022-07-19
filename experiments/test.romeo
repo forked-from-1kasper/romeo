@@ -1,4 +1,4 @@
-postulate A B C D : U
+constants A B C D : U
 
 variables X Y Z
 
@@ -12,29 +12,29 @@ macro ∘⁶ X := ∘² (∘³ X)
 
 #eval U₃
 
-postulate F : Hom U A B
-postulate G : Hom U B C
-postulate H : Hom U C D
+constants F : Hom U A B
+constants G : Hom U B C
+constants H : Hom U C D
 
 #eval (H ∘ G) ∘ id B ∘ (F ∘ id A)
 
-postulate x y z : A
+constants x y z : A
 
-postulate φ : Hom A x x
+constants φ : Hom A x x
 #eval ∘⁶ (φ ∘ φ)
 
 definition ∘⁴ (f : Hom A x x) := f ∘ f ∘ f ∘ f
 #eval ∘⁴ φ
 
-postulate f : Hom A x y
-postulate g : Hom A y z
+constants f : Hom A x y
+constants g : Hom A y z
 
 #eval (G ∘ F) (g ∘ f)
 
-postulate ρ : Hom U (Hom A x z) A
+constants ρ : Hom U (Hom A x z) A
 #eval ρ (g ∘ f)
 
-postulate ρ′ : Hom U (Hom A x x) A
+constants ρ′ : Hom U (Hom A x x) A
 
 #eval ρ′ (id x)
 #eval ρ′ (id (id x))
@@ -56,3 +56,10 @@ lemma lem3 : ∀ (f : Hom A x x), ¬ ¬ (f ∘ f = f) ⊃ (f ∘ f = f) :=
 
 lemma lem4 : ∀ (f : Hom A x x), (f ∘ f = f) ∨ ¬ (f ∘ f = f) :=
 λ f, lem (f ∘ f = f) (λ H, ∨-left H) (λ G, ∨-right G)
+
+constant catProd (A B : U) : U
+
+infixr 90 ×
+definition (A : U) × (B : U) := catProd[A, B]
+
+#eval C × D × C × D

@@ -7,6 +7,7 @@ type nat =
 type term =
   | U      of nat
   | Var    of ident
+  | Const  of ident * term list
   | Dom    of term
   | Cod    of term
   | Id     of term
@@ -42,6 +43,7 @@ exception VariableNotFound        of ident
 exception ExpectedUniv            of term
 exception ExpectedHom             of term
 exception Ineq                    of term * term
+exception InvalidArity            of ident * int * int
 
 exception IneqProp       of prop * prop
 exception ExpectedAnd    of prop
@@ -101,6 +103,7 @@ let freshVar ns n = match Env.find_opt n ns with Some x -> x | None -> n
 let rec salt ns = function
   | U n              -> U n
   | Var x            -> Var (freshVar ns x)
+  | Const (x, ts)    -> Const (freshVar ns x, List.map (salt ns) ts)
   | Dom g            -> Dom (salt ns g)
   | Cod g            -> Cod (salt ns g)
   | Id x             -> Id (salt ns x)
