@@ -1,16 +1,14 @@
-variables X Y T
-
 postulate C : U
 
-macro ∃-Hom  X Y := ∃  (g : Hom C X Y), ⊤
-macro ∃!-Hom X Y := ∃! (g : Hom C X Y), ⊤
+predicate ∃-Hom  (X : C) (Y : C) := ∃  (g : Hom C X Y), ⊤
+predicate ∃!-Hom (X : C) (Y : C) := ∃! (g : Hom C X Y), ⊤
 
-macro isTerminal T :=
+predicate isTerminal (T : C) :=
 ∀ (X : C), ∃!-Hom X T
 
 infixr 40 ≅
 
-macro X ≅ Y :=
+predicate (X : C) ≅ (Y : C) :=
 ∃ (f : Hom C X Y) (g : Hom C Y X), (f ∘ g = id Y) ∧ (g ∘ f = id X)
 
 lemma leftId : ∀ (a b : C) (f : Hom C a b), id b ∘ f = f :=
@@ -24,10 +22,10 @@ lemma compositionIsAssoc : ∀ (a b c d : C) (f : Hom C a b) (g : Hom C b c) (h 
 
 theorem terminalIsUnique : ∀ (T₁ T₂ : C), isTerminal T₁ ⊃ isTerminal T₂ ⊃ T₁ ≅ T₂ :=
 λ T₁ T₂ G H,
-  have G′ : ∃-Hom T₂ T₁ => proj (inst G T₂) in
-  have H′ : ∃-Hom T₁ T₂ => proj (inst H T₁) in
-  exis (ε H′) (exis (ε G′)
-    (have G″ : ∃!-Hom T₁ T₁ => inst G T₁ in
-     have H″ : ∃!-Hom T₂ T₂ => inst H T₂ in
-     conj (uniq H″ trivial trivial)
-          (uniq G″ trivial trivial)))
+  have G′ : ∃-Hom T₂ T₁ => ∃!→∃ (∀-elim G T₂) in
+  have H′ : ∃-Hom T₁ T₂ => ∃!→∃ (∀-elim H T₁) in
+  ∃-intro (ε H′) (∃-intro (ε G′)
+    (have G″ : ∃!-Hom T₁ T₁ => ∀-elim G T₁ in
+     have H″ : ∃!-Hom T₂ T₂ => ∀-elim H T₂ in
+     ∧-intro (∃!-uniq H″ trivial trivial)
+             (∃!-uniq G″ trivial trivial)))

@@ -23,15 +23,17 @@ let rec perform = function
   | Macro (e1, e2)       -> let vbs   = collectVariables Set.empty e1 in
                             let value = macroexpand (unpack e2) in
                             macros := { variables = vbs; pattern = e1; value = value } :: !macros
-  | Def (e1, e2)         -> let (e, bs) = expandDef [] e1 in
+  | Def (k, e1, e2)      -> let (e, bs) = expandDef [] e1 in
                             let vbs     = List.map fst bs in
                             let value   = macroexpand (unpack e2) in
                             let ctx0    = List.fold_left (fun ctx (s, t0) ->
                               let i = ident s in let t = elab t0 in ignore (Term.extUniv (check ctx t));
                               if Env.mem i ctx.term.local then raise (VariableAlreadyDeclared i)
                               else { ctx with term = Term.upLocal ctx.term i t }) ctx (List.rev bs) in
-                            ignore (check ctx0 (Term.salt Env.empty (expandTerm value)));
-                            macros := { variables = Set.of_list vbs; pattern = e; value = value } :: !macros
+                            begin match k with
+                              | Term -> ignore (check ctx0 (Term.salt Env.empty (expandTerm value)))
+                              | Prop -> checkProp ctx0 (Term.saltProp Env.empty (expandProp value))
+                            end; macros := { variables = Set.of_list vbs; pattern = e; value = value } :: !macros
   | Postulate (is, e)    -> let t = elab e in ignore (Term.extUniv (check ctx t)); List.iter (fun i -> informCheck i; upGlobal ctx.term (ident i) t) is
   | Infer e              -> Printf.printf "INFER: %s\n" (Pp.showTerm (check ctx (elab e))); flush_all ()
   | Eval e               -> let t = elab e in ignore (check ctx t); Printf.printf "EVAL: %s\n" (Pp.showTerm (eval ctx t)); flush_all ()

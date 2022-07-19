@@ -5,6 +5,7 @@ module Dict = Map.Make(String)
 module Set  = Set.Make(String)
 
 type associativity = Left | Right | Binder
+type kind          = Term | Prop
 
 type sexp =
   | Atom of string
@@ -17,7 +18,7 @@ type command =
   | Theorem   of string * sexp * sexp
   | Axiom     of string * sexp
   | Macro     of sexp * sexp
-  | Def       of sexp * sexp
+  | Def       of kind * sexp * sexp
   | Infix     of associativity * int * string list
   | Variables of string list
   | Import    of string list
@@ -47,9 +48,9 @@ let digits ns = let deg = ref 1 in let m = ref 0 in
 let universe = digits <$> (ch 'U' >> many numSubscript)
 
 let ws             = str (fun c -> c = ' ' || c = '\n' || c = '\t' || c = '\t') >> Monad.eps
-let keywords       = ["definition"; "macro"; "theorem"; "lemma"; "proposition";
-                      "infixl"; "infixr"; "postulate"; "axiom"; "NB"; "variables";
-                      "#infer"; "#eval"; ":="]
+let keywords       = ["definition"; "predicate"; "macro"; "theorem"; "lemma";
+                      "proposition"; "infixl"; "infixr"; "postulate"; "axiom"; "NB";
+                      "variables"; "#infer"; "#eval"; ":="]
 let reserved       = ['('; ')'; '\n'; '\t'; '\r'; ' '; ',']
 let isReserved   c = List.mem c reserved
 let isntReserved c = not (List.mem c reserved)
@@ -67,7 +68,8 @@ let macrodef tok = token tok >> ws >> sexpToplevel >>=
   fun e1 -> optional ws >> token ":=" >> ws >> sexpToplevel >>=
     fun e2 -> pure (e1, e2)
 
-let def   = macrodef "definition" >>= fun (e1, e2) -> pure (Def (e1, e2))
+let def   = macrodef "definition" >>= fun (e1, e2) -> pure (Def (Term, e1, e2))
+let pred  = macrodef "predicate"  >>= fun (e1, e2) -> pure (Def (Prop, e1, e2))
 let macro = macrodef "macro"      >>= fun (e1, e2) -> pure (Macro (e1, e2))
 
 let thm = (token "theorem" <|> token "lemma" <|> token "proposition") >> ws >> ident >>=
@@ -100,9 +102,9 @@ let import = token "import" >> ws >> sepBy1 ws ident >>= fun fs -> pure (Import 
 
 let cmdeof = eof >> pure Eof
 
-let cmdline = comment   <|> def    <|> macro <|> thm    <|> postulate
-          <|> axm       <|> infer  <|> eval  <|> infixr <|> infixl
-          <|> variables <|> import <|> cmdeof
+let cmdline = comment   <|> def    <|> macro     <|> pred   <|> thm
+          <|> postulate <|> axm    <|> infer     <|> eval   <|> import
+          <|> infixr    <|> infixl <|> variables <|> cmdeof
 
 let cmd = optional ws >> cmdline
 
@@ -279,24 +281,24 @@ let rec expandProof = function
                                                        let (e1, es2) = splitWhile ((<>) (Atom "in")) (List.tl es1) in let e2 = List.tl es2 in
                                                        Have (Ident.ident x, expandProp (macroexpand (unpack (Node t))), expandProof (Node e1), expandProof (Node e2))
   | Node [Atom "absurd"; x]                         -> Absurd (expandProof x)
-  | Node [Atom "conj"; a; b]                        -> Conj (expandProof a, expandProof b)
-  | Node [Atom "fst"; Atom x]                       -> Fst (Ident.ident x)
-  | Node [Atom "snd"; Atom x]                       -> Snd (Ident.ident x)
-  | Node [Atom "left"; x]                           -> Left (expandProof x)
-  | Node [Atom "right"; x]                          -> Right (expandProof x)
-  | Node [Atom "disj"; a; b]                        -> Disj (expandProof a, expandProof b)
+  | Node [Atom "∧-intro"; a; b]                     -> Conj (expandProof a, expandProof b)
+  | Node [Atom "∧-pr₁"; Atom x]                     -> Fst (Ident.ident x)
+  | Node [Atom "∧-pr₂"; Atom x]                     -> Snd (Ident.ident x)
+  | Node [Atom "∨-left"; x]                         -> Left (expandProof x)
+  | Node [Atom "∨-right"; x]                        -> Right (expandProof x)
+  | Node [Atom "∨-elim"; a; b]                      -> Disj (expandProof a, expandProof b)
   | Node (Atom "λ" :: es0)                          -> let (is, es1) = splitWhile ((<>) (Atom ",")) es0 in let e = Node (List.tl es1) in
                                                        List.fold_right (fun i e -> Lam (i, e)) (List.map expandIdent is) (expandProof e)
-  | Node [Atom "exis"; t; x]                        -> Exis (expandTerm (unpack t), expandProof x)
+  | Node [Atom "∃-intro"; t; x]                     -> Exis (expandTerm (unpack t), expandProof x)
   | Node [Atom "refl"; t]                           -> Refl (expandTerm (unpack t))
   | Node [Atom "symm"; x]                           -> Symm (expandProof x)
   | Node [Atom "trans"; Atom x; Atom y]             -> Trans (Ident.ident x, Ident.ident y)
   | Node [Atom "subst"; Atom x; e1; Atom y; e2]     -> Subst (Ident.ident x, expandProp (unpack e1), Ident.ident y, expandProof e2)
   | Node [Atom "choice"; Atom x]                    -> Choice (Ident.ident x)
-  | Node [Atom "exisUniq"; t; e1; e2]               -> ExisUniq (expandTerm (unpack t), expandProof e1, expandProof e2)
-  | Node [Atom "uniq"; Atom i; e1; e2]              -> Uniq (Ident.ident i, expandProof e1, expandProof e2)
-  | Node [Atom "proj"; x]                           -> Proj (expandProof x)
-  | Node (Atom "inst" :: Atom x :: ts)              -> Inst (Ident.ident x, List.map (expandTerm % unpack) ts)
+  | Node [Atom "∃!-intro"; t; e1; e2]               -> ExisUniq (expandTerm (unpack t), expandProof e1, expandProof e2)
+  | Node [Atom "∃!-uniq"; Atom i; e1; e2]           -> Uniq (Ident.ident i, expandProof e1, expandProof e2)
+  | Node [Atom "∃!→∃"; x]                           -> Proj (expandProof x)
+  | Node (Atom "∀-elim" :: Atom x :: ts)            -> Inst (Ident.ident x, List.map (expandTerm % unpack) ts)
   | Node (Atom x :: y :: ys)                        -> Mp (Ident.ident x, List.map expandProof (y :: ys))
   | Node [e]                                        -> expandProof e
   | e                                               -> raise (InvalidSyntax e)
