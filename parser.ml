@@ -177,7 +177,7 @@ let rec shuntingyard tokens =
         | i, Left   -> i <= prec op'
         | i, Right  -> i <  prec op'
         | i, Binder -> i >  prec op') stack
-      in pusher (Atom op :: stack') [] (mv @ unbuf buf :: queue) xs
+      in pusher (Atom op :: stack') [] (List.rev mv @ unbuf buf :: queue) xs
     | x :: xs ->
       pusher stack (unpack x :: buf) queue xs
   in let rec poper stack = function
