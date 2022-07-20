@@ -53,10 +53,10 @@ lemma lem2 : ∀ (f : Hom A x x), f ∘ f = f ⊃ f ∘ f = f ∘ f ∘ f :=
 
 macro ¬¬ X := ¬ (¬ X)
 
-lemma lem3 : ∀ (f : Hom A x x), ¬¬ (f ∘ f = f) ⊃ (f ∘ f = f) :=
+lemma lem3 : ∀ (f : Hom A x x), ¬¬(f ∘ f = f) ⊃ (f ∘ f = f) :=
 λ f H, ¬¬-elim H
 
-lemma lem4 : ∀ (f : Hom A x x), (f ∘ f = f) ∨ ¬ (f ∘ f = f) :=
+lemma lem4 : ∀ (f : Hom A x x), (f ∘ f = f) ∨ ¬(f ∘ f = f) :=
 λ f, lem (f ∘ f = f) (λ H, ∨-left H) (λ G, ∨-right G)
 
 constant catProd (A B : U) : U
