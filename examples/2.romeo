@@ -1,0 +1,73 @@
+predicate isLeftCancellable (C : U) (a : C) (b : C) (f : Hom C a b) (t : C) :=
+∀ (h k : Hom C t a), f ∘ h = f ∘ k ⊃ h = k
+
+predicate monic (C : U) (a : C) (b : C) (f : Hom C a b) :=
+∀ (t : C), isLeftCancellable C a b f t
+
+predicate isRightCancellable (C : U) (a : C) (b : C) (f : Hom C a b) (t : C) :=
+∀ (h k : Hom C b t), h ∘ f = k ∘ f ⊃ h = k
+
+predicate epic (C : U) (a : C) (b : C) (f : Hom C a b) :=
+∀ (t : C), isRightCancellable C a b f t
+
+predicate splitEpic (C : U) (a : C) (b : C) (f : Hom C a b) :=
+∃ (g : Hom C b a), f ∘ g = id b
+
+predicate isInverse (C : U) (a : C) (b : C) (f : Hom C a b) (g : Hom C b a) :=
+f ∘ g = id b ∧ g ∘ f = id a
+
+predicate iso (C : U) (a : C) (b : C) (f : Hom C a b) :=
+∃ (g : Hom C b a), isInverse C a b f g
+
+predicate balanced (C : U) :=
+∀ (a b : C) (f : Hom C a b), monic C a b f ⊃ epic C a b f ⊃ iso C a b f
+
+constants 𝟐 : U
+constants 0 : 𝟐
+constants 1 : 𝟐
+constants α : Hom 𝟐 0 1
+
+axiom 𝟐-ob : ∀ (b : 𝟐), b = 0 ∨ b = 1
+axiom 𝟐-id : ∀ (b : 𝟐) (g : Hom 𝟐 b b), g = id b
+axiom 𝟐-α₁ : ∀ (g : Hom 𝟐 0 1), g = α
+axiom 𝟐-α₂ : ∀ (g : Hom 𝟐 1 0), ⊥
+
+lemma α-monic : monic 𝟐 0 1 α :=
+λ t, have H : t = 0 ∨ t = 1 => ∀-elim 𝟐-ob t in
+  ∨-elim H
+    (λ H′, have H″ : 0 = t => symm H′ in
+      subst t′ (isLeftCancellable 𝟐 0 1 α t′) H″
+        (λ h k G,
+          have G′ : h = id 0 => ∀-elim 𝟐-id 0 h in
+          have G″ : id 0 = k => symm (∀-elim 𝟐-id 0 k) in
+          trans G′ G″))
+    (λ H′, have H″ : 1 = t => symm H′ in
+      subst t′ (isLeftCancellable 𝟐 0 1 α t′) H″
+        (λ g, absurd (∀-elim 𝟐-α₂ g)))
+
+lemma α-epic : epic 𝟐 0 1 α :=
+λ t, have H : t = 0 ∨ t = 1 => ∀-elim 𝟐-ob t in
+  ∨-elim H
+    (λ H′, have H″ : 0 = t => symm H′ in
+      subst t′ (isRightCancellable 𝟐 0 1 α t′) H″
+        (λ g, absurd (∀-elim 𝟐-α₂ g)))
+    (λ H′, have H″ : 1 = t => symm H′ in
+      subst t′ (isRightCancellable 𝟐 0 1 α t′) H″
+        (λ h k G,
+          have G′ : h = id 1 => ∀-elim 𝟐-id 1 h in
+          have G″ : id 1 = k => symm (∀-elim 𝟐-id 1 k) in
+          trans G′ G″))
+
+lemma α-not-iso : ¬(iso 𝟐 0 1 α) :=
+λ H, ∃-elim H (λ g _, ∀-elim 𝟐-α₂ g)
+
+lemma α-not-split-epic : ¬(splitEpic 𝟐 0 1 α) :=
+λ H, ∃-elim H (λ g _, ∀-elim 𝟐-α₂ g)
+
+theorem monic-split-epic-impl-iso : ∀ (C : U) (a b : C) (f : Hom C a b),
+  monic C a b f ⊃ splitEpic C a b f ⊃ iso C a b f :=
+λ C a b f G H,
+  ∃-elim H (λ g H′,
+    have H″ : id b = f ∘ g => symm H′ in
+    have G′ : f ∘ g ∘ f = f ⊃ g ∘ f = id a => ∀-elim G a (g ∘ f) (id a) in
+    ∃-intro g (∧-intro H′ (G′ (subst h (h ∘ f = f) H″ (refl f)))))
