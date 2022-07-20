@@ -28,7 +28,7 @@ lemma compositionIsAssoc : ∀ (a b c d : C) (f : Hom C a b) (g : Hom C b c) (h 
 
 variables X Y X′ Y′ X″ Y″ H
 macro ∃-intro² X Y H := ∃-intro X (∃-intro Y H)
-macro ∃-elim² X Y X′ X″ Y′ Y″ H := ∃-elim X (λ X′ X″, ∃-elim Y (λ Y′ Y″, H))
+macro ∃-elim² X Y (λ X′ X″ Y′ Y″, H) := ∃-elim X (λ X′ X″, ∃-elim Y (λ Y′ Y″, H))
 
 theorem terminalIsUnique : ∀ (T₁ T₂ : C), isTerminal T₁ ⊃ isTerminal T₂ ⊃ T₁ ≅ T₂ :=
 λ T₁ T₂ G H,
@@ -37,10 +37,10 @@ theorem terminalIsUnique : ∀ (T₁ T₂ : C), isTerminal T₁ ⊃ isTerminal T
   have G″ : ∃!-Hom T₁ T₁ => ∀-elim G T₁        in
   have H″ : ∃!-Hom T₂ T₂ => ∀-elim H T₂        in
 
-  (∃-elim² G′ H′ g₁ _ g₂ _
+  (∃-elim² G′ H′ (λ g₁ _ g₂ _,
     (∃-intro² g₂ g₁
       (∧-intro (∃!-uniq H″ trivial trivial)
-               (∃!-uniq G″ trivial trivial))))
+               (∃!-uniq G″ trivial trivial)))))
 
 lemma ≅-refl : ∀ (X : C), X ≅ X :=
 λ X, ∃-intro (id X) (∃-intro (id X) (∧-intro (refl (id X)) (refl (id X))))
