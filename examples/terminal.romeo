@@ -50,5 +50,5 @@ lemma ≅-trans : ∀ (X Y Z : C), X ≅ Y ⊃ Y ≅ Z ⊃ X ≅ Z :=
     ∃-intro (f₂ ∘ f₁) (∃-intro (g₁ ∘ g₂)
       (have F₁ : id Y = f₁ ∘ g₁ => symm (∧-pr₁ H″) in
        have F₂ : id Y = g₂ ∘ f₂ => symm (∧-pr₂ G″) in
-        ∧-intro (subst g (f₂ ∘ g ∘ g₂ = id Z) F₁ (∧-pr₁ G″))
-                (subst f (g₁ ∘ f ∘ f₁ = id X) F₂ (∧-pr₂ H″))))))))
+        ∧-intro (subst h (f₂ ∘ h ∘ g₂ = id Z) F₁ (∧-pr₁ G″))
+                (subst h (g₁ ∘ h ∘ f₁ = id X) F₂ (∧-pr₂ H″))))))))
