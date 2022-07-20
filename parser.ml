@@ -309,7 +309,7 @@ let rec expandProof = function
   | Node [Atom "∧-pr₂"; Atom x]                     -> Snd (Ident.ident x)
   | Node [Atom "∨-left"; x]                         -> Left (expandProof x)
   | Node [Atom "∨-right"; x]                        -> Right (expandProof x)
-  | Node [Atom "∨-elim"; a; b]                      -> Disj (expandProof a, expandProof b)
+  | Node [Atom "∨-elim"; Atom x; a; b]              -> Disj (Ident.ident x, expandProof a, expandProof b)
   | Node (Atom "λ" :: es0)                          -> let (is, es1) = splitWhile ((<>) (Atom ",")) es0 in let e = Node (List.tl es1) in
                                                        List.fold_right (fun i e -> Lam (i, e)) (List.map expandIdent is) (expandProof e)
   | Node [Atom "∃-intro"; t; x]                     -> Exis (expandTerm (unpack t), expandProof x)

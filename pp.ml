@@ -55,7 +55,7 @@ let rec ppProof paren e =
   | Snd x                -> "∧-pr₂ " ^ showIdent x
   | Left e               -> "∨-left " ^ ppProof true e
   | Right e              -> "∨-right " ^ ppProof true e
-  | Disj (e1, e2)        -> Printf.sprintf "∨-elim %s %s" (ppProof true e1) (ppProof true e2)
+  | Disj (x, e1, e2)     -> Printf.sprintf "∨-elim %s %s %s" (showIdent x) (ppProof true e1) (ppProof true e2)
   | Lam (x, e)           -> Printf.sprintf "λ %s, %s" (showIdent x) (showProof e)
   | Mp (x, es)           -> Printf.sprintf "%s %s" (showIdent x) (String.concat " " (List.map (ppProof true) es))
   | Inst (x, ts)         -> Printf.sprintf "∀-elim %s %s" (showIdent x) (String.concat " " (List.map (ppTerm true) ts))
@@ -82,6 +82,7 @@ let showError = function
   | InvalidArity (i, n, m)    -> Printf.sprintf "Constant “%s” expects %d argument(s), while %d given." (showIdent i) n m
   | ExpectedUniv t            -> Printf.sprintf "“%s” expected to be a universe." (showTerm t)
   | ExpectedHom t             -> Printf.sprintf "“%s” expected to be Hom." (showTerm t)
+  | ExpectedOr e              -> Printf.sprintf "“%s” expected to be a disjunction." (showProp e)
   | ExpectedAnd e             -> Printf.sprintf "“%s” expected to be a conjunction." (showProp e)
   | ExpectedImpl e            -> Printf.sprintf "“%s” expected to be an implication." (showProp e)
   | ExpectedForall e          -> Printf.sprintf "“%s” expected to be an universal quantifier." (showProp e)

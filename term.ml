@@ -45,6 +45,7 @@ exception Ineq                    of term * term
 exception InvalidArity            of ident * int * int
 
 exception IneqProp       of prop * prop
+exception ExpectedOr     of prop
 exception ExpectedAnd    of prop
 exception ExpectedImpl   of prop
 exception ExpectedForall of prop
@@ -76,6 +77,10 @@ let extHom = function
 let extAnd = function
   | And (a, b) -> (a, b)
   | e          -> raise (ExpectedAnd e)
+
+let extOr = function
+  | Or (a, b) -> (a, b)
+  | e         -> raise (ExpectedOr e)
 
 let extImpl = function
   | Impl (a, b) -> (a, b)
@@ -132,7 +137,7 @@ type proof =
   | Snd      of ident                                      (* A ∧ B ⊢ B *)
   | Left     of proof                                      (* A ⊢ A ∨ B *)
   | Right    of proof                                      (* B ⊢ A ∨ B *)
-  | Disj     of proof * proof               (* A → C, B → C ⊢ A ∨ B → C *)
+  | Disj     of ident * proof * proof       (* A → C, B → C ⊢ A ∨ B → C *)
   | Lam      of ident * proof                        (* (A ⊢ B) ⊢ A → B *)
   | Mp       of ident * proof list                      (* A → B, A ⊢ B *)
   | Inst     of ident * term list        (* ∀ (y : A), B y; x : A ⊢ B x *)
@@ -161,7 +166,7 @@ let rec saltProof ns = function
   | Snd x                -> Snd (freshVar ns x)
   | Left e               -> Left (saltProof ns e)
   | Right e              -> Right (saltProof ns e)
-  | Disj (e1, e2)        -> Disj (saltProof ns e1, saltProof ns e2)
+  | Disj (x, e1, e2)     -> Disj (freshVar ns x, saltProof ns e1, saltProof ns e2)
   | Lam (x, e)           -> let y = fresh x in Lam (y, saltProof (Env.add x y ns) e)
   | Mp (x, es)           -> Mp (freshVar ns x, List.map (saltProof ns) es)
   | Inst (x, ts)         -> Inst (freshVar ns x, List.map (salt ns) ts)

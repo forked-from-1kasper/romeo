@@ -65,7 +65,7 @@ let rec ensure ctx e t = try match e, t with
   | Snd x,                b                   -> let (_, a) = extAnd (get ctx x) in coincide ctx a b
   | Left u,               Or (t, _)           -> ensure ctx u t
   | Right u,              Or (_, t)           -> ensure ctx u t
-  | Disj (u1, u2),        Impl (Or (a, b), c) -> ensure ctx u1 (Impl (a, c)); ensure ctx u2 (Impl (b, c))
+  | Disj (x, u1, u2),     _                   -> let (a, b) = extOr (get ctx x) in ensure ctx u1 (Impl (a, t)); ensure ctx u2 (Impl (b, t))
   | Lam (x, u),           Impl (a, b)         -> ensure { ctx with rho = upLocal ctx.rho x a } u b
   | Lam (x, u),           Forall (y, t, i)    -> ensure { ctx with term = upLocal ctx.term x t } u (substProp1 ctx y (Var x) i)
   | Mp (x, es),           c0                  -> let c = List.fold_left (fun t e -> let (a, b) = extImpl t in ensure ctx e a; b) (get ctx x) es in coincide ctx c c0
