@@ -3,7 +3,7 @@ constants A B C D : U
 variables X Y Z
 
 macro ∘² X := X ∘ X
-macro ∘³ X := X ∘ X ∘ X
+macro ∘³ X := X ∘ (X ∘ X)
 macro ∘⁶ X := ∘² (∘³ X)
 
 #macroexpand ∘³ (F ∘ G ∘ H ∘ F′ ∘ G′ ∘ H′)

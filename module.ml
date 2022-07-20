@@ -33,7 +33,7 @@ let informCheck d = Printf.printf "Checking: %s\n" d; flush_all ()
 
 let rec perform = function
   | Macro (e1, e2)       -> let vbs   = collectVariables Set.empty e1 in
-                            let value = macroexpand (unpack e2) in
+                            let value = macroexpand e2 in
                             macros := { variables = vbs; pattern = e1; value = value } :: !macros
   | Def (k, e1, e2)      -> let (e, bs) = expandDef [] e1 in
                             informCheck (showSExps (extend e));
